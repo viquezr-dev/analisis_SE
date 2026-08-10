@@ -820,145 +820,132 @@
         // ================================================================
        
 
-        function mostrarEstadisticas() {
-            const modal = document.getElementById('statsModal');
-            modal.classList.add('active');
-
-            const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
-            const variable = currentVariable;
-
-            document.getElementById('statsTitle').textContent = `📊 Estadísticas: ${variableLabels[variable] || variable}`;
-
-            // Preparar datos para el gráfico
-            let labels = [];
-            let data = [];
-            let colors = [];
-
-            if (variable === 'CAT_DENS') {
-                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
-                const counts = {};
-                categories.forEach(c => counts[c] = 0);
-                features.forEach(f => {
-                    const cat = f.properties[variable] || 'SIN_DATOS';
-                    counts[cat] = (counts[cat] || 0) + 1;
-                });
-                labels = categories.map(c => catLabels[c] || c);
-                data = categories.map(c => counts[c] || 0);
-                colors = categories.map(c => catColors[c] || '#b0b0b0');
-            } else {
-                // Variables numéricas
-                const r = rangosFijos[variable];
-                const stepCount = r ? r.steps : 5;
-                const nombres = r ? r.nombres : ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
-                const counts = new Array(stepCount).fill(0);
-
-                features.forEach(f => {
-                    const val = parseFloat(f.properties[variable]);
-                    if (!isNaN(val) && val !== null) {
-                        const idx = getRangoIndex(variable, val);
-                        if (idx < counts.length) counts[idx]++;
+       function mostrarEstadisticas() {
+                const modal = document.getElementById('statsModal');
+                modal.classList.add('active');
+            
+                const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
+                const variable = currentVariable;
+            
+                document.getElementById('statsTitle').textContent = `📊 Estadísticas: ${variableLabels[variable] || variable}`;
+            
+                // Preparar datos para el gráfico
+                let labels = [];
+                let data = [];
+                let colors = [];
+            
+                if (variable === 'CAT_DENS') {
+                    const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                    const counts = {};
+                    categories.forEach(c => counts[c] = 0);
+                    features.forEach(f => {
+                        const cat = f.properties[variable] || 'SIN_DATOS';
+                        counts[cat] = (counts[cat] || 0) + 1;
+                    });
+                    labels = categories.map(c => catLabels[c] || c);
+                    data = categories.map(c => counts[c] || 0);
+                    colors = categories.map(c => catColors[c] || '#b0b0b0');
+                } else {
+                    // Variables numéricas
+                    const r = rangosFijos[variable];
+                    const stepCount = r ? r.steps : 5;
+                    const nombres = r ? r.nombres : ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+                    const counts = new Array(stepCount).fill(0);
+            
+                    features.forEach(f => {
+                        const val = parseFloat(f.properties[variable]);
+                        if (!isNaN(val) && val !== null) {
+                            const idx = getRangoIndex(variable, val);
+                            if (idx < counts.length) counts[idx]++;
+                        }
+                    });
+            
+                    labels = nombres;
+                    data = counts;
+                    if (r) {
+                        colors = [];
+                        for (let i = 0; i < stepCount; i++) {
+                            const minVal = r.min + (r.max - r.min) * (i / stepCount);
+                            const maxVal = r.min + (r.max - r.min) * ((i + 1) / stepCount);
+                            colors.push(getColorByValue(variable, (minVal + maxVal) / 2, r.min, r.max));
+                        }
+                    } else {
+                        colors = ['#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#084594'];
                     }
-                });
-
-                labels = nombres;
-                data = counts;
-                if (r) {
-                    colors = [];
-                    for (let i = 0; i < stepCount; i++) {
-                        const minVal = r.min + (r.max - r.min) * (i / stepCount);
-                        const maxVal = r.min + (r.max - r.min) * ((i + 1) / stepCount);
-                        colors.push(getColorByValue(variable, (minVal + maxVal) / 2, r.min, r.max));
+                }
+            
+                // Estadísticas numéricas
+                const statsDiv = document.getElementById('statsNumbers');
+                let statsHTML = '';
+                if (variable !== 'CAT_DENS') {
+                    const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
+                    if (valores.length > 0) {
+                        const sum = valores.reduce((a, b) => a + b, 0);
+                        const mean = sum / valores.length;
+                        const sorted = [...valores].sort((a, b) => a - b);
+                        const median = sorted.length % 2 === 0 ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2 :
+                            sorted[Math.floor(sorted.length / 2)];
+                        const min = sorted[0];
+                        const max = sorted[sorted.length - 1];
+            
+                        statsHTML = `
+                                <div class="stat-item"><span class="num">${valores.length}</span><div class="label">Registros</div></div>
+                                <div class="stat-item"><span class="num">${mean.toFixed(2)}</span><div class="label">Promedio</div></div>
+                                <div class="stat-item"><span class="num">${median.toFixed(2)}</span><div class="label">Mediana</div></div>
+                                <div class="stat-item"><span class="num">${min.toFixed(2)} - ${max.toFixed(2)}</span><div class="label">Mínimo - Máximo</div></div>
+                            `;
                     }
                 } else {
-                    colors = ['#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#084594'];
-                }
-            }
-
-            // Estadísticas numéricas
-            const statsDiv = document.getElementById('statsNumbers');
-            let statsHTML = '';
-            if (variable !== 'CAT_DENS') {
-                const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
-                if (valores.length > 0) {
-                    const sum = valores.reduce((a, b) => a + b, 0);
-                    const mean = sum / valores.length;
-                    const sorted = [...valores].sort((a, b) => a - b);
-                    const median = sorted.length % 2 === 0 ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2 :
-                        sorted[Math.floor(sorted.length / 2)];
-                    const min = sorted[0];
-                    const max = sorted[sorted.length - 1];
-
+                    const total = data.reduce((a, b) => a + b, 0);
                     statsHTML = `
-                            <div class="stat-item"><span class="num">${valores.length}</span><div class="label">Registros</div></div>
-                            <div class="stat-item"><span class="num">${mean.toFixed(2)}</span><div class="label">Promedio</div></div>
-                            <div class="stat-item"><span class="num">${median.toFixed(2)}</span><div class="label">Mediana</div></div>
-                            <div class="stat-item"><span class="num">${min.toFixed(2)} - ${max.toFixed(2)}</span><div class="label">Mínimo - Máximo</div></div>
+                            <div class="stat-item"><span class="num">${total}</span><div class="label">Total polígonos</div></div>
+                            <div class="stat-item"><span class="num">${data.filter(d => d > 0).length}</span><div class="label">Categorías con datos</div></div>
                         `;
                 }
-            } else {
-                const total = data.reduce((a, b) => a + b, 0);
-                statsHTML = `
-                        <div class="stat-item"><span class="num">${total}</span><div class="label">Total polígonos</div></div>
-                        <div class="stat-item"><span class="num">${data.filter(d => d > 0).length}</span><div class="label">Categorías con datos</div></div>
-                    `;
-            }
-            statsDiv.innerHTML = statsHTML;
-
-            // Crear gráfico
-            if (chartInstance) {
-                chartInstance.destroy();
-            }
-
-            const ctx = document.getElementById('statsChart').getContext('2d');
-            chartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Polígonos',
-                        data: data,
-                        backgroundColor: colors,
-                        borderColor: colors.map(c => c),
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return context.parsed.y + ' polígonos';
+                statsDiv.innerHTML = statsHTML;
+            
+                // Crear gráfico (usando la variable global chartInstance)
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+            
+                const ctx = document.getElementById('statsChart').getContext('2d');
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Polígonos',
+                            data: data,
+                            backgroundColor: colors,
+                            borderColor: colors.map(c => c),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.parsed.y + ' polígonos';
+                                    }
                                 }
                             }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { font: { size: 9 } }
                         },
-                        x: {
-                            ticks: { font: { size: 8 }, maxRotation: 30 }
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { font: { size: 9 } }
+                            },
+                            x: {
+                                ticks: { font: { size: 8 }, maxRotation: 30 }
+                            }
                         }
                     }
-                }
-            });
-        }
-
-        function closeStats() {
-            document.getElementById('statsModal').classList.remove('active');
-            if (chartInstance) {
-                chartInstance.destroy();
-                chartInstance = null;
+                });
             }
-        }
-
-        // Cerrar modal al hacer clic fuera
-        document.getElementById('statsModal').addEventListener('click', function(e) {
-            if (e.target === this) closeStats();
-        });
 
         // ================================================================
         // 7. FILTROS
