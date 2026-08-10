@@ -696,6 +696,32 @@
             actualizarContadores();
         }
 
+        // ================================================================
+        // ACTUALIZAR HEATMAP CON NUEVA CONFIGURACIÓN
+        // ================================================================
+        function actualizarHeatmap() {
+            if (!heatmapLayer || currentMode !== 'heatmap') return;
+            
+            // Obtener valores actuales de los sliders
+            const radius = parseInt(document.getElementById('radius-slider').value);
+            const blur = parseFloat(document.getElementById('blur-slider').value) / 40;
+            
+            // Actualizar configuración
+            heatmapConfig.radius = radius;
+            heatmapConfig.blur = blur;
+            
+            // Reconfigurar el heatmap
+            heatmapLayer.configure(heatmapConfig);
+            
+            // Forzar actualización
+            if (heatmapLayer._heatmap) {
+                heatmapLayer._heatmap.configure(heatmapConfig);
+                heatmapLayer._update();
+            }
+            
+            console.log(`✅ Heatmap actualizado: radius=${radius}, blur=${blur}`);
+        }
+        
         function actualizarContadores() {
             const variable = currentVariable;
             if (variable === 'CAT_DENS') {
@@ -1191,25 +1217,19 @@
             updateMap();
         });
 
-        // Controles de calor
+        // ================================================================
+        // CONTROLES DE HEATMAP
+        // ================================================================
         document.getElementById('radius-slider').addEventListener('input', function(e) {
             const val = e.target.value;
             document.getElementById('radius-val').innerText = val;
-            heatmapConfig.radius = parseInt(val);
-            if (heatmapLayer) {
-                heatmapLayer.configure(heatmapConfig);
-                heatmapLayer._update();
-            }
+            actualizarHeatmap();
         });
-
+        
         document.getElementById('blur-slider').addEventListener('input', function(e) {
             const val = e.target.value;
             document.getElementById('blur-val').innerText = val;
-            heatmapConfig.blur = parseFloat(val / 40);
-            if (heatmapLayer) {
-                heatmapLayer.configure(heatmapConfig);
-                heatmapLayer._update();
-            }
+            actualizarHeatmap();
         });
 
         document.getElementById('searchInput').addEventListener('keypress', function(e) {
@@ -1231,6 +1251,11 @@
         // 14. INICIO
         // ================================================================
         loadGeoJSON();
+        // Sincronizar sliders con configuración inicial
+        document.getElementById('radius-slider').value = heatmapConfig.radius;
+        document.getElementById('radius-val').innerText = heatmapConfig.radius;
+        document.getElementById('blur-slider').value = Math.round(heatmapConfig.blur * 40);
+        document.getElementById('blur-val').innerText = Math.round(heatmapConfig.blur * 40);
         console.log('🗺️ Mapa interactivo iniciado – RAUL VIQUEZ');
     </script>
 
