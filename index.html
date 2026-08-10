@@ -770,7 +770,7 @@
         function updateLegend(variable, data) {
             const legendDiv = document.getElementById('legend');
             let html = `<div class="legend-title">Leyenda</div>`;
-
+        
             if (variable === 'CAT_DENS') {
                 const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 for (const cat of categories) {
@@ -791,7 +791,7 @@
                     { min: 5000, max: 10000, label: 'Alta (5000-10000)' },
                     { min: 10000, max: 20000, label: 'Muy alta (>10000)' }
                 ];
-
+        
                 for (const r of rangos) {
                     const valorMedio = (r.min + r.max) / 2;
                     const color = getColorByValue('DENS_POB', valorMedio, 0, 20000);
@@ -802,22 +802,86 @@
                             </div>
                         `;
                 }
+            } else if (variable === 'VIV_OCUP') {
+                // Rangos específicos para Viviendas Ocupadas
+                const rangos = [
+                    { min: 0, max: 1600, label: 'Muy bajo (0-1600)' },
+                    { min: 1600, max: 3200, label: 'Bajo (1600-3200)' },
+                    { min: 3200, max: 4800, label: 'Medio (3200-4800)' },
+                    { min: 4800, max: 6400, label: 'Alto (4800-6400)' },
+                    { min: 6400, max: 8000, label: 'Muy alto (6400-8000)' }
+                ];
+        
+                for (const r of rangos) {
+                    const valorMedio = (r.min + r.max) / 2;
+                    const color = getColorByValue('VIV_OCUP', valorMedio, 0, 8000);
+                    html += `
+                            <div class="legend-item">
+                                <div class="legend-color" style="background:${color};"></div>
+                                <span class="legend-text">${r.label}</span>
+                            </div>
+                        `;
+                }
+            } else if (variable === 'PORC_OCU') {
+                // Rangos específicos para % Ocupación
+                const rangos = [
+                    { min: 0, max: 20, label: 'Muy bajo (0-20%)' },
+                    { min: 20, max: 40, label: 'Bajo (20-40%)' },
+                    { min: 40, max: 60, label: 'Medio (40-60%)' },
+                    { min: 60, max: 80, label: 'Alto (60-80%)' },
+                    { min: 80, max: 100, label: 'Muy alto (80-100%)' }
+                ];
+        
+                for (const r of rangos) {
+                    const valorMedio = (r.min + r.max) / 2;
+                    const color = getColorByValue('PORC_OCU', valorMedio, 0, 100);
+                    html += `
+                            <div class="legend-item">
+                                <div class="legend-color" style="background:${color};"></div>
+                                <span class="legend-text">${r.label}</span>
+                            </div>
+                        `;
+                }
+            } else if (variable === 'PERS_VIV') {
+                // Rangos específicos para Personas por vivienda ocupada
+                const rangos = [
+                    { min: 0, max: 1.2, label: 'Muy bajo (0.0-1.2)' },
+                    { min: 1.2, max: 2.4, label: 'Bajo (1.2-2.4)' },
+                    { min: 2.4, max: 3.6, label: 'Medio (2.4-3.6)' },
+                    { min: 3.6, max: 4.8, label: 'Alto (3.6-4.8)' },
+                    { min: 4.8, max: 6.0, label: 'Muy alto (4.8-6.0)' }
+                ];
+        
+                for (const r of rangos) {
+                    const valorMedio = (r.min + r.max) / 2;
+                    const color = getColorByValue('PERS_VIV', valorMedio, 0, 6);
+                    html += `
+                            <div class="legend-item">
+                                <div class="legend-color" style="background:${color};"></div>
+                                <span class="legend-text">${r.label}</span>
+                            </div>
+                        `;
+                }
             } else {
-                // Otras variables numéricas
+                // Otras variables numéricas (fallback)
                 let stepCount = 5;
                 let nombres = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
-
+                let minVal = 0,
+                    maxVal = 1;
+        
                 if (rangosFijos[variable]) {
                     const r = rangosFijos[variable];
                     stepCount = r.steps;
                     nombres = r.nombres;
+                    minVal = r.min;
+                    maxVal = r.max;
                 }
-
+        
                 for (let i = 0; i < stepCount; i++) {
-                    const minVal = i / stepCount;
-                    const maxVal = (i + 1) / stepCount;
-                    const valorMedio = (minVal + maxVal) / 2;
-                    const color = getColorByValue(variable, valorMedio, 0, 1);
+                    const low = minVal + (maxVal - minVal) * (i / stepCount);
+                    const high = minVal + (maxVal - minVal) * ((i + 1) / stepCount);
+                    const valorMedio = (low + high) / 2;
+                    const color = getColorByValue(variable, valorMedio, minVal, maxVal);
                     html += `
                             <div class="legend-item">
                                 <div class="legend-color" style="background:${color};"></div>
@@ -826,13 +890,13 @@
                         `;
                 }
             }
-
+        
             // Descripción del indicador
             const desc = descripcionIndicador[variable] || '';
             if (desc) {
                 html += `<div class="legend-desc">💡 ${desc}</div>`;
             }
-
+        
             legendDiv.innerHTML = html;
         }
 
