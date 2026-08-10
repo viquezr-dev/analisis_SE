@@ -896,20 +896,34 @@
             console.log('📊 Rango de valores:', minValor, '→', maxValor);
             
             var puntosGenerados = 0;
-            var poligonosSinCentroide = 0;
+            var sinGeometria = 0;
+            var errores = 0;
             
             for (var i = 0; i < features.length; i++) {
                 var f = features[i];
                 var geom = f.geometry;
-                if (!geom) continue;
+                if (!geom) {
+                    sinGeometria++;
+                    continue;
+                }
                 
                 var coords = null;
                 
-                if (geom.type === 'Polygon') {
-                    coords = geom.coordinates[0];
-                } else if (geom.type === 'MultiPolygon') {
-                    if (geom.coordinates && geom.coordinates.length > 0 && geom.coordinates[0].length > 0) {
-                        coords = geom.coordinates[0][0];
+                // MANEJO DE MultiPolygon
+                if (geom.type === 'MultiPolygon') {
+                    // MultiPolygon: [polígono1, polígono2, ...]
+                    // Cada polígono: [anillo_exterior, anillo_interior1, ...]
+                    // Tomamos el primer polígono y su primer anillo (exterior)
+                    if (geom.coordinates && geom.coordinates.length > 0) {
+                        var primerPoligono = geom.coordinates[0];
+                        if (primerPoligono && primerPoligono.length > 0) {
+                            coords = primerPoligono[0]; // Primer anillo del primer polígono
+                        }
+                    }
+                } else if (geom.type === 'Polygon') {
+                    // Polygon: [anillo_exterior, anillo_interior1, ...]
+                    if (geom.coordinates && geom.coordinates.length > 0) {
+                        coords = geom.coordinates[0];
                     }
                 } else if (geom.type === 'Point') {
                     var lat = geom.coordinates[1];
@@ -919,15 +933,14 @@
                     puntos.push([lat, lng, intensidad]);
                     puntosGenerados++;
                     continue;
-                } else {
-                    continue;
                 }
                 
                 if (!coords || coords.length === 0) {
-                    poligonosSinCentroide++;
+                    errores++;
                     continue;
                 }
                 
+                // Calcular centroide
                 var lat = 0, lng = 0;
                 var coordsValidas = 0;
                 for (var j = 0; j < coords.length; j++) {
@@ -940,7 +953,7 @@
                 }
                 
                 if (coordsValidas === 0) {
-                    poligonosSinCentroide++;
+                    errores++;
                     continue;
                 }
                 
@@ -955,7 +968,8 @@
             }
             
             console.log('✅ Puntos generados:', puntosGenerados);
-            console.log('⚠️ Polígonos sin centroide:', poligonosSinCentroide);
+            console.log('⚠️ Sin geometría:', sinGeometria);
+            console.log('⚠️ Errores:', errores);
             
             if (puntos.length === 0) {
                 alert('No se pudieron generar puntos para el heatmap. Verifica que los polígonos tengan geometría válida.');
