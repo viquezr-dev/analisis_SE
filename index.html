@@ -697,29 +697,51 @@
         }
 
         // ================================================================
-        // ACTUALIZAR HEATMAP CON NUEVA CONFIGURACIÓN
+        // ACTUALIZAR HEATMAP CON NUEVA CONFIGURACIÓN (VERSIÓN CORREGIDA)
         // ================================================================
         function actualizarHeatmap() {
-            if (!heatmapLayer || currentMode !== 'heatmap') return;
+            // Verificar que el heatmap existe y está en modo calor
+            if (!heatmapLayer || currentMode !== 'heatmap') {
+                console.warn('⚠️ Heatmap no disponible para actualizar');
+                return;
+            }
             
-            // Obtener valores actuales de los sliders
+            // Obtener valores de los sliders
             const radius = parseInt(document.getElementById('radius-slider').value);
             const blur = parseFloat(document.getElementById('blur-slider').value) / 40;
             
-            // Actualizar configuración
+            // Actualizar configuración global
             heatmapConfig.radius = radius;
             heatmapConfig.blur = blur;
             
-            // Reconfigurar el heatmap
-            heatmapLayer.configure(heatmapConfig);
-            
-            // Forzar actualización
-            if (heatmapLayer._heatmap) {
-                heatmapLayer._heatmap.configure(heatmapConfig);
-                heatmapLayer._update();
+            // Reconfigurar el heatmap usando el método correcto
+            try {
+                // Heatmap.js usa h337 para configurar
+                if (heatmapLayer._heatmap) {
+                    // Actualizar configuración del heatmap interno
+                    heatmapLayer._heatmap.configure({
+                        radius: radius,
+                        blur: blur
+                    });
+                    // Forzar redibujo
+                    heatmapLayer._update();
+                } else if (heatmapLayer._renderer) {
+                    // Algunas versiones usan _renderer
+                    heatmapLayer._renderer.configure({
+                        radius: radius,
+                        blur: blur
+                    });
+                    heatmapLayer._update();
+                }
+                console.log(`✅ Heatmap actualizado: radius=${radius}, blur=${blur.toFixed(3)}`);
+            } catch (e) {
+                console.warn('⚠️ Error al actualizar heatmap:', e);
+                // Si falla, recrear el heatmap
+                if (currentMode === 'heatmap') {
+                    console.log('🔄 Recreando heatmap...');
+                    updateMap();
+                }
             }
-            
-            console.log(`✅ Heatmap actualizado: radius=${radius}, blur=${blur}`);
         }
         
         function actualizarContadores() {
@@ -1218,34 +1240,82 @@
         });
 
         // ================================================================
-        // CONTROLES DE HEATMAP
+        // CONTROLES DE HEATMAP (VERSIÓN COMPLETA Y CORREGIDA)
         // ================================================================
-        document.getElementById('radius-slider').addEventListener('input', function(e) {
-            const val = e.target.value;
-            document.getElementById('radius-val').innerText = val;
-            actualizarHeatmap();
+        const radiusSlider = document.getElementById('radius-slider');
+        const blurSlider = document.getElementById('blur-slider');
+        const radiusVal = document.getElementById('radius-val');
+        const blurVal = document.getElementById('blur-val');
+        let heatmapTimeout = null;
+        
+        // Función para actualizar el heatmap
+        function actualizarHeatmap() {
+            // Verificar que el heatmap existe
+            if (!heatmapLayer || currentMode !== 'heatmap') {
+                console.warn('⚠️ Heatmap no disponible para actualizar');
+                return;
+            }
+            
+            const radius = parseInt(radiusSlider.value);
+            const blur = parseFloat(blurSlider.value) / 40;
+            
+            // Actualizar configuración global
+            heatmapConfig.radius = radius;
+            heatmapConfig.blur = blur;
+            
+            try {
+                // Método 1: Usar _heatmap (común en heatmap.js)
+                if (heatmapLayer._heatmap) {
+                    heatmapLayer._heatmap.configure({
+                        radius: radius,
+                        blur: blur
+                    });
+                    if (heatmapLayer._update) {
+                        heatmapLayer._update();
+                    }
+                }
+                // Método 2: Usar el método setData para forzar actualización
+                else {
+                    // Recrear el heatmap si no se puede actualizar
+                    console.log('🔄 Recreando heatmap...');
+                    const currentData = heatmapLayer._data;
+                    if (currentData) {
+                        map.removeLayer(heatmapLayer);
+                        heatmapLayer = new HeatmapOverlay(heatmapConfig);
+                        map.addLayer(heatmapLayer);
+                        heatmapLayer.setData(currentData);
+                    }
+                }
+                console.log(`✅ Heatmap actualizado: radius=${radius}, blur=${blur.toFixed(3)}`);
+            } catch (e) {
+                console.warn('⚠️ Error al actualizar heatmap:', e);
+                // Recrear el heatmap como fallback
+                if (currentMode === 'heatmap' && geoJsonData) {
+                    updateMap();
+                }
+            }
+        }
+        
+        // Eventos de los sliders con debounce
+        radiusSlider.addEventListener('input', function(e) {
+            radiusVal.innerText = e.target.value;
+            clearTimeout(heatmapTimeout);
+            heatmapTimeout = setTimeout(() => {
+                actualizarHeatmap();
+            }, 100);
         });
         
-        document.getElementById('blur-slider').addEventListener('input', function(e) {
-            const val = e.target.value;
-            document.getElementById('blur-val').innerText = val;
-            actualizarHeatmap();
+        blurSlider.addEventListener('input', function(e) {
+            blurVal.innerText = e.target.value;
+            clearTimeout(heatmapTimeout);
+            heatmapTimeout = setTimeout(() => {
+                actualizarHeatmap();
+            }, 100);
         });
-
-        document.getElementById('searchInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') buscarPoligonos();
-        });
-
-        document.getElementById('statsModal').addEventListener('click', function(e) {
-            if (e.target === this) closeStats();
-        });
-
-        window.toggleAllFiltros = toggleAllFiltros;
-        window.resetFiltros = resetFiltros;
-        window.buscarPoligonos = buscarPoligonos;
-        window.exportarCSV = exportarCSV;
-        window.mostrarEstadisticas = mostrarEstadisticas;
-        window.closeStats = closeStats;
+        
+        // Inicializar valores
+        radiusVal.innerText = radiusSlider.value;
+        blurVal.innerText = blurSlider.value;
 
         // ================================================================
         // 14. INICIO
