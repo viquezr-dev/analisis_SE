@@ -513,6 +513,7 @@
                     const popupContent = `
                         <div style="font-family:'Segoe UI',sans-serif;min-width:200px;max-width:300px;">
                             <h4 style="margin:0 0 4px 0;color:#1a2a3a;">${p.PROVINCIA || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
+                            ${p.BARR_NOMB ? `<div style="font-size:12px;color:#666;margin-bottom:4px;">📍 ${p.BARR_NOMB}</div>` : ''}
                             <hr style="margin:4px 0;border:0;border-top:1px solid #ddd;">
                             <table style="width:100%;font-size:13px;line-height:1.6;">
                                 <tr><td><strong>Viviendas:</strong></td><td>${p.VIVIENDA || 0}</td></tr>
@@ -522,6 +523,7 @@
                                 <tr><td><strong>Densidad:</strong></td><td>${p.DENS_POB ? p.DENS_POB.toFixed(1) : 0} hab/km²</td></tr>
                                 <tr><td><strong>Pers./viv. ocupada:</strong></td><td>${p.PERS_VIV ? p.PERS_VIV.toFixed(2) : 0}</td></tr>
                                 <tr><td><strong>Categoría:</strong></td><td>${p.CAT_DENS || 'Sin datos'}</td></tr>
+                                <tr><td><strong>Área:</strong></td><td>${p.AREA ? (p.AREA / 1000000).toFixed(2) : 0} km² (${p.AREA ? p.AREA.toFixed(0) : 0} m²)</td></tr>
                             </table>
                         </div>
                     `;
