@@ -1393,22 +1393,7 @@
             legendDiv.innerHTML = html;
             return;
         }
-                // Calcular colores reales según los datos
-                const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
-                const maxVal = valores.length > 0 ? Math.max(...valores) : 20000;
-                const minVal = valores.length > 0 ? Math.min(...valores) : 0;
-                
-                for (const r of rangos) {
-                    const color = getColorByValue(variable, (r.min + r.max) / 2, minVal, maxVal);
-                    html += `<div class="legend-item">
-                        <div class="legend-color" style="background:${color};"></div>
-                        <span class="legend-text">${r.label}</span>
-                    </div>`;
-                }
-                html += `<div class="legend-desc">💡 ${descripcionIndicador[variable] || ''}</div>`;
-                legendDiv.innerHTML = html;
-                return;
-            }
+            
         
             // --- OTRAS VARIABLES NUMÉRICAS (VIV_OCUP, PORC_OCU, PERS_VIV) ---
             const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
