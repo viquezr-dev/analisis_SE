@@ -1004,6 +1004,7 @@
             if (!geoJsonData) return;
 
             const variable = currentVariable;
+            console.log(`📊 Actualizando mapa con variable: ${variable}`);
             const featuresFiltradas = aplicarFiltros(allFeatures, variable);
             currentFeaturesFiltradas = featuresFiltradas;
 
@@ -1307,20 +1308,27 @@
         // 13. EVENTOS
         // ================================================================
         document.getElementById('variable-select').addEventListener('change', function(e) {
-            currentVariable = e.target.value;
+            const nuevaVariable = e.target.value;
+            console.log(`🔄 Cambiando indicador a: ${nuevaVariable}`);
+            
+            // Actualizar variable global
+            currentVariable = nuevaVariable;
+            
+            // Limpiar búsqueda
             document.getElementById('searchInput').value = '';
-            construirFiltros(currentVariable);
+            
+            // Reconstruir filtros para la nueva variable
+            construirFiltros(nuevaVariable);
+            
+            // Actualizar el mapa
             updateMap();
-        });
-
-        document.getElementById('map-select').addEventListener('change', function(e) {
-            const value = e.target.value;
-            map.removeLayer(satelliteLayer);
-            map.removeLayer(osmLayer);
-            map.removeLayer(topoLayer);
-            if (value === 'satellite') satelliteLayer.addTo(map);
-            else if (value === 'osm') osmLayer.addTo(map);
-            else if (value === 'topo') topoLayer.addTo(map);
+            
+            // Actualizar la etiqueta del info box
+            const label = variableLabels[nuevaVariable] || nuevaVariable;
+            document.getElementById('info-label').textContent = label;
+            document.getElementById('info-value').textContent = 'Clic en un polígono para detalles';
+            
+            console.log(`✅ Indicador cambiado a: ${label}`);
         });
 
         // Modo Polígonos
