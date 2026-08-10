@@ -875,10 +875,13 @@
                 return;
             }
             
+            console.log('📊 Features a procesar:', features.length);
+            
+            // Preparar puntos [lat, lon, intensidad]
             const puntos = [];
             const valores = features
-                .map(f => parseFloat(f.properties[variable]))
-                .filter(v => !isNaN(v) && v !== null && v > 0);
+                .map(function(f) { return parseFloat(f.properties[variable]); })
+                .filter(function(v) { return !isNaN(v) && v !== null && v > 0; });
             
             if (valores.length === 0) {
                 alert('No hay valores positivos para el indicador seleccionado');
@@ -886,36 +889,76 @@
                 return;
             }
             
-            const maxValor = Math.max(...valores);
-            const minValor = Math.min(...valores);
-            const rango = maxValor - minValor || 1;
+            var maxValor = Math.max.apply(null, valores);
+            var minValor = Math.min.apply(null, valores);
+            var rango = maxValor - minValor || 1;
             
-            let puntosGenerados = 0;
+            console.log('📊 Rango de valores:', minValor, '→', maxValor);
             
-            for (const f of features) {
-                const geom = f.geometry;
-                if (geom && geom.type === 'Polygon' && geom.coordinates && geom.coordinates.length > 0) {
-                    const coords = geom.coordinates[0];
-                    if (!coords || coords.length === 0) continue;
-                    
-                    let lat = 0, lng = 0;
-                    for (const c of coords) {
-                        lat += c[1];
-                        lng += c[0];
+            var puntosGenerados = 0;
+            var poligonosSinCentroide = 0;
+            
+            for (var i = 0; i < features.length; i++) {
+                var f = features[i];
+                var geom = f.geometry;
+                if (!geom) continue;
+                
+                var coords = null;
+                
+                if (geom.type === 'Polygon') {
+                    coords = geom.coordinates[0];
+                } else if (geom.type === 'MultiPolygon') {
+                    if (geom.coordinates && geom.coordinates.length > 0 && geom.coordinates[0].length > 0) {
+                        coords = geom.coordinates[0][0];
                     }
-                    lat /= coords.length;
-                    lng /= coords.length;
-                    
-                    const valor = parseFloat(f.properties[variable]) || 0;
-                    const intensidad = 0.1 + 0.9 * ((valor - minValor) / rango);
-                    
+                } else if (geom.type === 'Point') {
+                    var lat = geom.coordinates[1];
+                    var lng = geom.coordinates[0];
+                    var valor = parseFloat(f.properties[variable]) || 0;
+                    var intensidad = 0.1 + 0.9 * ((valor - minValor) / rango);
                     puntos.push([lat, lng, intensidad]);
                     puntosGenerados++;
+                    continue;
+                } else {
+                    continue;
                 }
+                
+                if (!coords || coords.length === 0) {
+                    poligonosSinCentroide++;
+                    continue;
+                }
+                
+                var lat = 0, lng = 0;
+                var coordsValidas = 0;
+                for (var j = 0; j < coords.length; j++) {
+                    var c = coords[j];
+                    if (Array.isArray(c) && c.length === 2 && !isNaN(c[0]) && !isNaN(c[1])) {
+                        lat += c[1];
+                        lng += c[0];
+                        coordsValidas++;
+                    }
+                }
+                
+                if (coordsValidas === 0) {
+                    poligonosSinCentroide++;
+                    continue;
+                }
+                
+                lat /= coordsValidas;
+                lng /= coordsValidas;
+                
+                var valor = parseFloat(f.properties[variable]) || 0;
+                var intensidad = 0.1 + 0.9 * ((valor - minValor) / rango);
+                
+                puntos.push([lat, lng, intensidad]);
+                puntosGenerados++;
             }
             
+            console.log('✅ Puntos generados:', puntosGenerados);
+            console.log('⚠️ Polígonos sin centroide:', poligonosSinCentroide);
+            
             if (puntos.length === 0) {
-                alert('No se pudieron generar puntos para el heatmap');
+                alert('No se pudieron generar puntos para el heatmap. Verifica que los polígonos tengan geometría válida.');
                 toggleHeatmap();
                 return;
             }
@@ -924,6 +967,8 @@
                 map.removeLayer(heatLayerInstance);
                 heatLayerInstance = null;
             }
+            
+            console.log('🔥 Creando heatmap con', puntos.length, 'puntos...');
             
             heatLayerInstance = L.heatLayer(puntos, {
                 radius: 25,
@@ -940,8 +985,10 @@
                 }
             }).addTo(map);
             
+            console.log('✅ Heatmap añadido al mapa');
+            
             try {
-                const bounds = L.latLngBounds(puntos.map(p => [p[0], p[1]]));
+                var bounds = L.latLngBounds(puntos.map(function(p) { return [p[0], p[1]]; }));
                 if (bounds.isValid() && !bounds.isZero()) {
                     map.fitBounds(bounds, { padding: [50, 50] });
                 }
@@ -949,18 +996,18 @@
                 console.warn('⚠️ No se pudo ajustar el zoom:', e);
             }
             
-            const legendDiv = document.getElementById('legend');
+            var legendDiv = document.getElementById('legend');
             if (legendDiv) {
-                legendDiv.innerHTML = `
-                    <div class="legend-title">🔥 Mapa de Calor</div>
-                    <div style="display:flex; align-items:center; gap:4px; margin:4px 0;">
-                        <span style="font-size:9px;">Bajo</span>
-                        <div style="flex:1; height:8px; background: linear-gradient(to right, blue, cyan, lime, yellow, orange, red); border-radius:4px;"></div>
-                        <span style="font-size:9px;">Alto</span>
-                    </div>
-                    <div class="legend-desc">💡 Intensidad: ${variableLabels[variable] || variable}</div>
-                `;
+                legendDiv.innerHTML = 
+                    '<div class="legend-title">🔥 Mapa de Calor</div>' +
+                    '<div style="display:flex; align-items:center; gap:4px; margin:4px 0;">' +
+                        '<span style="font-size:9px;">Bajo</span>' +
+                        '<div style="flex:1; height:8px; background: linear-gradient(to right, blue, cyan, lime, yellow, orange, red); border-radius:4px;"></div>' +
+                        '<span style="font-size:9px;">Alto</span>' +
+                    '</div>' +
+                    '<div class="legend-desc">💡 Intensidad: ' + (variableLabels[variable] || variable) + '</div>';
             }
+        }
         }
         // ================================================================
         // 6. ESTADÍSTICAS (Gráfico)
