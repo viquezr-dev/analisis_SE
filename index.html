@@ -1400,7 +1400,30 @@
             legendDiv.innerHTML = html;
             return;
         }
-            
+            // ============================================================
+            // PERS_VIV: Leyenda con colores púrpuras (CORREGIDO)
+            // ============================================================
+            if (variable === 'PERS_VIV') {
+                const colores = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
+                const rangos = [
+                    { min: 0, max: 1.2, label: 'Muy bajo (0.0-1.2)' },
+                    { min: 1.2, max: 2.4, label: 'Bajo (1.2-2.4)' },
+                    { min: 2.4, max: 3.6, label: 'Medio (2.4-3.6)' },
+                    { min: 3.6, max: 4.8, label: 'Alto (3.6-4.8)' },
+                    { min: 4.8, max: 6.0, label: 'Muy alto (4.8-6.0)' }
+                ];
+                
+                for (let i = 0; i < rangos.length; i++) {
+                    const r = rangos[i];
+                    html += `<div class="legend-item">
+                        <div class="legend-color" style="background:${colores[i]};"></div>
+                        <span class="legend-text">${r.label}</span>
+                    </div>`;
+                }
+                html += `<div class="legend-desc">💡 ${descripcionIndicador[variable] || ''}</div>`;
+                legendDiv.innerHTML = html;
+                return;
+            }
         
             // --- OTRAS VARIABLES NUMÉRICAS (VIV_OCUP, PORC_OCU, PERS_VIV) ---
             const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
