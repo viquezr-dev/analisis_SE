@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Estudio Socioeconómico - Vivienda 2023</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Estilos personalizados -->
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; }
+        #map { height: 100vh; width: 100%; }
+        /* Panel de control flotante */
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255,255,255,0.95);
+            padding: 18px 22px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            max-width: 280px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .control-panel h3 {
+            margin-bottom: 12px;
+            font-size: 16px;
+            color: #1a2a3a;
+            border-bottom: 2px solid #2a8b5e;
+            padding-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+        .control-panel label {
+            font-weight: 600;
+            font-size: 14px;
+            color: #2c3e50;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .control-panel select {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .control-panel select:focus {
+            outline: none;
+            border-color: #2a8b5e;
+            box-shadow: 0 0 0 3px rgba(42,139,94,0.2);
+        }
+        .control-panel .info {
+            margin-top: 14px;
+            font-size: 13px;
+            color: #34495e;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #2a8b5e;
+        }
+        .control-panel .info span {
+            font-weight: 700;
+            color: #1a2a3a;
+        }
+        .legend {
+            margin-top: 14px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 10px;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        .legend-text {
+            font-size: 13px;
+            color: #2c3e50;
+        }
+        /* Pie de página opcional */
+        .footer {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 6px 18px;
+            border-radius: 20px;
+            font-size: 12px;
+            backdrop-filter: blur(2px);
+            pointer-events: none;
+        }
+        @media (max-width: 600px) {
+            .control-panel {
+                top: 10px;
+                right: 10px;
+                max-width: 220px;
+                padding: 12px 16px;
+            }
+            .control-panel h3 { font-size: 14px; }
+            .control-panel select { font-size: 12px; padding: 6px 10px; }
+            .legend { font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Mapa -->
+    <div id="map"></div>
+
+    <!-- Panel de control -->
+    <div class="control-panel">
+        <h3>📊 Indicador</h3>
+        <label for="variable-select">Selecciona variable:</label>
+        <select id="variable-select">
+            <option value="DENS_POB">Densidad poblacional (hab/km²)</option>
+            <option value="CAT_DENS" selected>Categoría de densidad</option>
+            <option value="VIV_OCUP">Viviendas ocupadas</option>
+            <option value="PORC_OCU">% Ocupación</option>
+            <option value="PERS_VIV">Personas / vivienda ocupada</option>
+        </select>
+
+        <div class="info" id="info-box">
+            <span id="info-label">Categoría de densidad</span><br />
+            <span id="info-value">Selecciona un polígono</span>
+        </div>
+
+        <div id="legend" class="legend">
+            <!-- Se llenará dinámicamente con JS -->
+        </div>
+    </div>
+
+    <div class="footer">Datos: Estudio Socioeconómico 2023 – RAUL VIQUEZ</div>
+
+    <!-- Leaflet JS y dependencias -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Para cargar GeoJSON grande de forma asíncrona (opcional) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-ajax/2.1.0/leaflet.ajax.min.js"></script>
+
+    <script>
+        // ----------------------------------------------------------------
+        // 1. INICIALIZAR MAPA CON FONDO SATELITAL (Esri World Imagery)
+        // ----------------------------------------------------------------
+        const map = L.map('map').setView([8.0, -80.0], 7); // Centrar en Panamá (ajusta según tu zona)
+
+        // Capa base satelital (Esri)
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Capa base de calles (opcional, para referencia)
+        const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+
+        // Podrías añadir un control de capas para alternar entre satélite y calles
+        // const baseMaps = { "Satélite": satelliteLayer, "Calles": streetLayer };
+        // L.control.layers(baseMaps).addTo(map);
+
+        // ----------------------------------------------------------------
+        // 2. VARIABLES GLOBALES
+        // ----------------------------------------------------------------
+        let currentLayer = null;          // Capa GeoJSON actual
+        let currentVariable = 'CAT_DENS'; // Variable seleccionada
+        let geoJsonData = null;          // Datos del GeoJSON cargados
+
+        // ----------------------------------------------------------------
+        // 3. DEFINIR PALETAS DE COLORES
+        // ----------------------------------------------------------------
+        // Para CAT_DENS (categorías fijas)
+        const catColors = {
+            'MUY_BAJA': '#f7fcfd',
+            'BAJA': '#ccece6',
+            'MEDIA': '#99d8c9',
+            'ALTA': '#66c2a4',
+            'MUY_ALTA': '#2ca25f',
+            'SIN_DATOS': '#e0e0e0'
+        };
+        const catLabels = {
+            'MUY_BAJA': 'Muy baja (<100 hab/km²)',
+            'BAJA': 'Baja (100-500)',
+            'MEDIA': 'Media (500-1500)',
+            'ALTA': 'Alta (1500-5000)',
+            'MUY_ALTA': 'Muy alta (>5000)',
+            'SIN_DATOS': 'Sin datos'
+        };
+
+        // Para variables numéricas (escala de colores)
+        function getColorByValue(value, min, max, palette = 'viridis') {
+            // Normalizar entre 0 y 1
+            const t = (value - min) / (max - min);
+            // Usar una paleta simple: verde claro a verde oscuro
+            // Se puede extender a más colores
+            const r = Math.round(247 - 42 * t);
+            const g = Math.round(252 - 158 * t);
+            const b = Math.round(253 - 95 * t);
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        // ----------------------------------------------------------------
+        // 4. FUNCIÓN PARA OBTENER COLOR SEGÚN VARIABLE Y VALOR
+        // ----------------------------------------------------------------
+        function getFeatureColor(feature, variable) {
+            const value = feature.properties[variable];
+            if (value === undefined || value === null || value === '') {
+                return '#cccccc';
+            }
+
+            if (variable === 'CAT_DENS') {
+                return catColors[value] || '#cccccc';
+            }
+
+            // Variables numéricas: necesitamos calcular min/max globales
+            // Lo haremos en la función de estilo con un closure
+            return '#2ca25f'; // placeholder, se recalculará
+        }
+
+        // ----------------------------------------------------------------
+        // 5. FUNCIÓN PARA CREAR LEYENDA DINÁMICA
+        // ----------------------------------------------------------------
+        function updateLegend(variable, data) {
+            const legendDiv = document.getElementById('legend');
+            let html = '<div style="font-weight:600;margin-bottom:6px;color:#2c3e50;">Leyenda</div>';
+
+            if (variable === 'CAT_DENS') {
+                // Categorías fijas
+                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                for (const cat of categories) {
+                    html += `
+                        <div class="legend-item">
+                            <div class="legend-color" style="background:${catColors[cat]};"></div>
+                            <span class="legend-text">${catLabels[cat]}</span>
+                        </div>
+                    `;
+                }
+            } else {
+                // Variables numéricas: calcular min/max de los datos
+                let values = [];
+                for (const feature of data.features) {
+                    const val = parseFloat(feature.properties[variable]);
+                    if (!isNaN(val) && val !== null) values.push(val);
+                }
+                if (values.length === 0) {
+                    html += '<div class="legend-item">Sin datos disponibles</div>';
+                } else {
+                    const min = Math.min(...values);
+                    const max = Math.max(...values);
+                    // Mostrar 5 intervalos
+                    const steps = 5;
+                    const step = (max - min) / steps;
+                    for (let i = 0; i < steps; i++) {
+                        const low = min + i * step;
+                        const high = min + (i + 1) * step;
+                        const color = getColorByValue(low, min, max);
+                        html += `
+                            <div class="legend-item">
+                                <div class="legend-color" style="background:${color};"></div>
+                                <span class="legend-text">${low.toFixed(1)} – ${high.toFixed(1)}</span>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            legendDiv.innerHTML = html;
+        }
+
+        // ----------------------------------------------------------------
+        // 6. FUNCIÓN PARA ACTUALIZAR MAPA SEGÚN VARIABLE
+        // ----------------------------------------------------------------
+        function updateMap(variable) {
+            if (!geoJsonData) return;
+
+            // Eliminar capa anterior si existe
+            if (currentLayer) {
+                map.removeLayer(currentLayer);
+                currentLayer = null;
+            }
+
+            // Calcular min/max para variables numéricas
+            let minVal = Infinity, maxVal = -Infinity;
+            if (variable !== 'CAT_DENS') {
+                for (const feature of geoJsonData.features) {
+                    const val = parseFloat(feature.properties[variable]);
+                    if (!isNaN(val) && val !== null) {
+                        if (val < minVal) minVal = val;
+                        if (val > maxVal) maxVal = val;
+                    }
+                }
+                if (minVal === Infinity) minVal = 0;
+                if (maxVal === -Infinity) maxVal = 1;
+            }
+
+            // Crear nueva capa con estilo según variable
+            currentLayer = L.geoJSON(geoJsonData, {
+                style: function(feature) {
+                    let value = feature.properties[variable];
+                    let color = '#cccccc';
+
+                    if (variable === 'CAT_DENS') {
+                        color = catColors[value] || '#cccccc';
+                    } else {
+                        // Para numéricas
+                        const numVal = parseFloat(value);
+                        if (!isNaN(numVal) && numVal !== null) {
+                            color = getColorByValue(numVal, minVal, maxVal);
+                        }
+                    }
+
+                    return {
+                        fillColor: color,
+                        weight: 1,
+                        opacity: 0.7,
+                        color: 'white',
+                        fillOpacity: 0.8
+                    };
+                },
+                onEachFeature: function(feature, layer) {
+                    // Popup con información
+                    const props = feature.properties;
+                    const popupContent = `
+                        <div style="font-family:'Segoe UI',sans-serif;min-width:200px;">
+                            <h4 style="margin:0 0 6px 0;color:#1a2a3a;">${props.PROVINCIA || ''} - ${props.DISTRITO || ''}</h4>
+                            <hr style="margin:4px 0;border:0;border-top:1px solid #ddd;">
+                            <table style="width:100%;font-size:13px;">
+                                <tr><td><strong>Viviendas:</strong></td><td>${props.VIVIENDA || 0}</td></tr>
+                                <tr><td><strong>Personas:</strong></td><td>${props.V_PERSONAS || 0}</td></tr>
+                                <tr><td><strong>Ocupadas:</strong></td><td>${props.VIV_OCUP || 0}</td></tr>
+                                <tr><td><strong>% Ocupación:</strong></td><td>${props.PORC_OCU || 0}%</td></tr>
+                                <tr><td><strong>Densidad:</strong></td><td>${props.DENS_POB ? props.DENS_POB.toFixed(1) : 0} hab/km²</td></tr>
+                                <tr><td><strong>Pers./viv. ocupada:</strong></td><td>${props.PERS_VIV ? props.PERS_VIV.toFixed(2) : 0}</td></tr>
+                                <tr><td><strong>Categoría:</strong></td><td>${props.CAT_DENS || 'Sin datos'}</td></tr>
+                            </table>
+                        </div>
+                    `;
+                    layer.bindPopup(popupContent);
+
+                    // Al pasar el mouse, resaltar
+                    layer.on('mouseover', function(e) {
+                        this.setStyle({ weight: 3, color: '#222', fillOpacity: 0.9 });
+                        this.bringToFront();
+                    });
+                    layer.on('mouseout', function(e) {
+                        // Reaplicar estilo original (necesitamos almacenar el estilo base)
+                        // Simplemente volvemos a aplicar el estilo según variable
+                        const style = this.feature ? this.feature.properties[variable] : null;
+                        // Esta es una forma simple: recargar la capa no es óptimo, pero funciona.
+                        // Para mejor rendimiento, podríamos guardar el estilo original.
+                        // Lo simplificamos: al salir, restablecemos el color.
+                        const value = this.feature.properties[variable];
+                        let color = '#cccccc';
+                        if (variable === 'CAT_DENS') {
+                            color = catColors[value] || '#cccccc';
+                        } else {
+                            const numVal = parseFloat(value);
+                            if (!isNaN(numVal) && numVal !== null) {
+                                color = getColorByValue(numVal, minVal, maxVal);
+                            }
+                        }
+                        this.setStyle({ weight: 1, color: 'white', fillColor: color, fillOpacity: 0.8 });
+                    });
+                }
+            }).addTo(map);
+
+            // Actualizar leyenda
+            updateLegend(variable, geoJsonData);
+
+            // Actualizar info box
+            document.getElementById('info-label').innerText = 
+                document.querySelector(`#variable-select option[value="${variable}"]`).textContent;
+            document.getElementById('info-value').innerText = 'Clic en un polígono para ver detalles';
+        }
+
+        // ----------------------------------------------------------------
+        // 7. CARGAR GEOJSON (USANDO fetch)
+        // ----------------------------------------------------------------
+        async function loadGeoJSON() {
+            try {
+                // Ajusta la ruta a tu archivo GeoJSON (debe estar en el mismo directorio)
+                const response = await fetch('vivienda_2023.geojson');
+                if (!response.ok) {
+                    throw new Error('Error al cargar el archivo GeoJSON: ' + response.status);
+                }
+                const data = await response.json();
+                geoJsonData = data;
+                console.log('GeoJSON cargado exitosamente. Features:', data.features.length);
+
+                // Mostrar variable por defecto (CAT_DENS)
+                currentVariable = document.getElementById('variable-select').value;
+                updateMap(currentVariable);
+
+                // Ajustar vista al área de los datos
+                const bounds = L.geoJSON(data).getBounds();
+                map.fitBounds(bounds, { padding: [20, 20] });
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('info-box').innerHTML = `
+                    <div style="color:red;font-weight:bold;">Error al cargar los datos.</div>
+                    <div style="font-size:12px;margin-top:6px;">${error.message}</div>
+                    <div style="font-size:12px;margin-top:6px;">Asegúrate de que el archivo <strong>vivienda_2023.geojson</strong> esté en la misma carpeta que este HTML.</div>
+                `;
+            }
+        }
+
+        // ----------------------------------------------------------------
+        // 8. EVENTO DEL SELECTOR
+        // ----------------------------------------------------------------
+        document.getElementById('variable-select').addEventListener('change', function(e) {
+            const variable = e.target.value;
+            currentVariable = variable;
+            if (geoJsonData) {
+                updateMap(variable);
+            }
+        });
+
+        // ----------------------------------------------------------------
+        // 9. INICIALIZAR
+        // ----------------------------------------------------------------
+        loadGeoJSON();
+
+        // ----------------------------------------------------------------
+        // 10. AL HACER CLIC EN EL MAPA, ACTUALIZAR INFO BOX (OPCIONAL)
+        // ----------------------------------------------------------------
+        // Ya lo hacemos en el popup, pero podemos agregar un evento para mostrar
+        // el valor de la variable seleccionada en el info box cuando se hace clic.
+        // Lo dejamos así para no complicar.
+
+        console.log('Mapa interactivo inicializado. Propietario: RAUL VIQUEZ');
+    </script>
+</body>
+</html>
