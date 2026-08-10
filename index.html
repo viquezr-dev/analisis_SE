@@ -830,6 +830,12 @@
         }
 
 
+        // ================================================================
+        // MAPA DE CALOR (HEATMAP)
+        // ================================================================
+        let heatLayerInstance = null;
+        let mostrarHeatmapActivo = false;
+        
         function toggleHeatmap() {
             mostrarHeatmapActivo = !mostrarHeatmapActivo;
             const btn = document.querySelector('.btn-heat');
@@ -845,25 +851,34 @@
                     map.removeLayer(heatLayerInstance);
                     heatLayerInstance = null;
                 }
-                // Restaurar capas
-                if (currentLayer) map.addLayer(currentLayer);
-                if (bufferLayer) map.addLayer(bufferLayer);
-                if (colegiosLayer) map.addLayer(colegiosLayer);
-                if (markersLayer) map.addLayer(markersLayer);
+                // Restaurar capa de polígonos
+                if (currentLayer) {
+                    map.addLayer(currentLayer);
+                }
+                // Actualizar leyenda e información
+                updateLegend(currentVariable, {
+                    type: 'FeatureCollection',
+                    features: currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures
+                });
             }
         }
+        
         function generarHeatmap() {
-            // Ocultar capas de polígonos y marcadores
-            if (currentLayer) map.removeLayer(currentLayer);
-            if (bufferLayer) map.removeLayer(bufferLayer);
-            if (colegiosLayer) map.removeLayer(colegiosLayer);
-            if (markersLayer) map.removeLayer(markersLayer);
+            console.log('🔥 Generando heatmap...');
+            
+            // Ocultar capa de polígonos
+            if (currentLayer) {
+                map.removeLayer(currentLayer);
+            }
             
             // Obtener datos
             const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
             const variable = currentVariable;
             
-            if (features.length === 0) {
+            console.log('📊 Features:', features?.length);
+            console.log('📊 Variable:', variable);
+            
+            if (!features || features.length === 0) {
                 alert('No hay datos para generar el mapa de calor');
                 toggleHeatmap();
                 return;
@@ -871,16 +886,31 @@
             
             // Preparar puntos [lat, lon, intensidad]
             const puntos = [];
-            const valores = features.map(f => parseFloat(f.properties[variable]) || 0);
+            const valores = features
+                .map(f => parseFloat(f.properties[variable]))
+                .filter(v => !isNaN(v) && v !== null && v > 0);
+            
+            if (valores.length === 0) {
+                alert('No hay valores positivos para el indicador seleccionado');
+                toggleHeatmap();
+                return;
+            }
+            
             const maxValor = Math.max(...valores);
             const minValor = Math.min(...valores);
             const rango = maxValor - minValor || 1;
             
+            console.log('📊 Rango de valores:', minValor, '→', maxValor);
+            
+            let puntosGenerados = 0;
+            
             for (const f of features) {
                 const geom = f.geometry;
-                if (geom && geom.type === 'Polygon' && geom.coordinates.length > 0) {
+                if (geom && geom.type === 'Polygon' && geom.coordinates && geom.coordinates.length > 0) {
                     // Calcular centroide
                     const coords = geom.coordinates[0];
+                    if (!coords || coords.length === 0) continue;
+                    
                     let lat = 0, lng = 0;
                     for (const c of coords) {
                         lat += c[1];
@@ -890,11 +920,15 @@
                     lng /= coords.length;
                     
                     const valor = parseFloat(f.properties[variable]) || 0;
-                    const intensidad = (valor - minValor) / rango;
+                    // Normalizar intensidad entre 0.1 y 1.0
+                    const intensidad = 0.1 + 0.9 * ((valor - minValor) / rango);
                     
-                    puntos.push([lat, lng, intensidad * 0.8 + 0.2]); // Normalizar entre 0.2 y 1.0
+                    puntos.push([lat, lng, intensidad]);
+                    puntosGenerados++;
                 }
             }
+            
+            console.log('✅ Puntos generados:', puntosGenerados);
             
             if (puntos.length === 0) {
                 alert('No se pudieron generar puntos para el heatmap');
@@ -902,29 +936,54 @@
                 return;
             }
             
-            // Crear heatmap
+            // Eliminar heatmap anterior
             if (heatLayerInstance) {
                 map.removeLayer(heatLayerInstance);
+                heatLayerInstance = null;
             }
             
+            // Crear heatmap
+            console.log('🔥 Creando heatmap con', puntos.length, 'puntos...');
+            
             heatLayerInstance = L.heatLayer(puntos, {
-                radius: 25,        // Radio de cada punto de calor
-                blur: 20,          // Difuminado
-                maxZoom: 13,       // Zoom máximo donde se ve el heatmap
-                gradient: {        // Paleta de colores
-                    0.0: 'blue',
-                    0.2: 'cyan',
-                    0.4: 'lime',
-                    0.6: 'yellow',
-                    0.8: 'orange',
-                    1.0: 'red'
+                radius: 25,
+                blur: 15,
+                maxZoom: 15,
+                minOpacity: 0.3,
+                gradient: {
+                    0.0: '#0000FF',
+                    0.2: '#00FFFF',
+                    0.4: '#00FF00',
+                    0.6: '#FFFF00',
+                    0.8: '#FF8800',
+                    1.0: '#FF0000'
                 }
             }).addTo(map);
             
+            console.log('✅ Heatmap añadido al mapa');
+            
             // Ajustar zoom
-            const bounds = L.latLngBounds(puntos.map(p => [p[0], p[1]]));
-            if (bounds.isValid()) {
-                map.fitBounds(bounds, { padding: [50, 50] });
+            try {
+                const bounds = L.latLngBounds(puntos.map(p => [p[0], p[1]]));
+                if (bounds.isValid() && !bounds.isZero()) {
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
+            } catch (e) {
+                console.warn('⚠️ No se pudo ajustar el zoom:', e);
+            }
+            
+            // Actualizar leyenda
+            const legendDiv = document.getElementById('legend');
+            if (legendDiv) {
+                legendDiv.innerHTML = `
+                    <div class="legend-title">🔥 Mapa de Calor</div>
+                    <div style="display:flex; align-items:center; gap:4px; margin:4px 0;">
+                        <span style="font-size:9px;">Bajo</span>
+                        <div style="flex:1; height:8px; background: linear-gradient(to right, blue, cyan, lime, yellow, orange, red); border-radius:4px;"></div>
+                        <span style="font-size:9px;">Alto</span>
+                    </div>
+                    <div class="legend-desc">💡 Intensidad del indicador ${variableLabels[variable] || variable}</div>
+                `;
             }
         }
         // ================================================================
