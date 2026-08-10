@@ -996,28 +996,42 @@
         function updateMapWithFilters() {
             if (!geoJsonData) return;
             const variable = currentVariable;
-
+        
+            // Eliminar capa anterior
             if (currentLayer) {
                 map.removeLayer(currentLayer);
                 currentLayer = null;
             }
-
+        
+            // Aplicar filtros
             const featuresFiltradas = aplicarFiltros(allFeatures, variable);
             currentFeaturesFiltradas = featuresFiltradas;
-
+        
+            // Actualizar contadores
             document.getElementById('count-mostrados').textContent = featuresFiltradas.length;
             document.getElementById('count-total').textContent = allFeatures.length;
-
+        
+            // Crear GeoJSON filtrado
             const geoJsonFiltrado = {
                 type: 'FeatureCollection',
                 features: featuresFiltradas
             };
-
+        
+            // Verificar si hay datos para mostrar
+            if (featuresFiltradas.length === 0) {
+                // Mostrar mensaje en el info box
+                document.getElementById('info-value').textContent = '⚠️ No hay polígonos con los filtros seleccionados';
+                // Limpiar leyenda
+                document.getElementById('legend').innerHTML = `<div class="legend-title">Leyenda</div><div style="color:#999;font-size:10px;">Sin datos para mostrar</div>`;
+                return;
+            }
+        
+            // Crear nueva capa
             currentLayer = L.geoJSON(geoJsonFiltrado, {
                 style: function(feature) {
                     let value = feature.properties[variable];
                     let color = '#b0b0b0';
-
+        
                     if (variable === 'CAT_DENS') {
                         color = catColors[value] || '#b0b0b0';
                     } else {
@@ -1041,7 +1055,7 @@
                     const p = feature.properties;
                     const areaM2 = p.AREA || 0;
                     const areaKm2 = areaM2 / 1000000;
-
+        
                     const popupContent = `
                             <div style="font-family:'Segoe UI',sans-serif;min-width:170px;max-width:240px;font-size:11px;">
                                 <h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:12px;">${p.PROVINCIA || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
@@ -1060,7 +1074,7 @@
                             </div>
                         `;
                     layer.bindPopup(popupContent);
-
+        
                     layer.on('mouseover', function() {
                         this.setStyle({ weight: 2.5, color: '#000000', fillOpacity: 0.95 });
                         this.bringToFront();
@@ -1088,14 +1102,14 @@
                     });
                 }
             }).addTo(map);
-
+        
+            // Actualizar leyenda y etiquetas
             updateLegend(variable, geoJsonFiltrado);
-
+        
             const label = document.querySelector(`#variable-select option[value="${variable}"]`)?.textContent || variable;
             document.getElementById('info-label').textContent = label;
-            document.getElementById('info-value').textContent = 'Clic en un polígono para detalles';
+            document.getElementById('info-value').textContent = `Mostrando ${featuresFiltradas.length} polígonos`;
         }
-
         // ================================================================
         // 9. CONSTRUIR FILTROS
         // ================================================================
