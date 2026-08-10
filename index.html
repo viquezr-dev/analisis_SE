@@ -6,10 +6,23 @@
     <title>Estudio Socioeconómico - Vivienda 2023</title>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js">
+    </script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; }
-        #map { height: 100vh; width: 100%; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
 
         .control-panel {
             position: absolute;
@@ -19,10 +32,10 @@
             background: rgba(255, 255, 255, 0.95);
             padding: 10px 12px;
             border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            max-width: 250px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            max-width: 270px;
             backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             max-height: 95vh;
             overflow-y: auto;
             font-size: 11px;
@@ -54,7 +67,69 @@
         .control-panel select:focus {
             outline: none;
             border-color: #d94f4f;
-            box-shadow: 0 0 0 2px rgba(217,79,79,0.2);
+            box-shadow: 0 0 0 2px rgba(217, 79, 79, 0.2);
+        }
+
+        /* Buscador */
+        .search-container {
+            margin-top: 5px;
+            display: flex;
+            gap: 4px;
+        }
+        .search-container input {
+            flex: 1;
+            padding: 3px 6px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 10px;
+            outline: none;
+        }
+        .search-container input:focus {
+            border-color: #d94f4f;
+            box-shadow: 0 0 0 2px rgba(217, 79, 79, 0.2);
+        }
+        .search-container button {
+            padding: 3px 8px;
+            border-radius: 5px;
+            border: none;
+            background: #d94f4f;
+            color: white;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        .search-container button:hover {
+            background: #b33a3a;
+        }
+
+        /* Botones de acción */
+        .action-buttons {
+            display: flex;
+            gap: 4px;
+            margin-top: 5px;
+        }
+        .action-buttons button {
+            flex: 1;
+            padding: 3px 6px;
+            border-radius: 5px;
+            border: none;
+            font-size: 9px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .btn-export {
+            background: #2a8b5e;
+            color: white;
+        }
+        .btn-export:hover {
+            background: #1e6b47;
+        }
+        .btn-stats {
+            background: #2c6b9e;
+            color: white;
+        }
+        .btn-stats:hover {
+            background: #1e4f7a;
         }
 
         .filtros-container {
@@ -81,7 +156,9 @@
             padding: 1px 4px;
             border-radius: 3px;
         }
-        .filtro-checkbox:hover { background: #e9ecef; }
+        .filtro-checkbox:hover {
+            background: #e9ecef;
+        }
         .filtro-checkbox input[type="checkbox"] {
             margin-right: 5px;
             width: 12px;
@@ -94,7 +171,7 @@
             height: 10px;
             border-radius: 2px;
             margin-right: 5px;
-            border: 1px solid rgba(0,0,0,0.1);
+            border: 1px solid rgba(0, 0, 0, 0.1);
             flex-shrink: 0;
         }
         .filtro-checkbox .count-badge {
@@ -118,7 +195,9 @@
             width: 100%;
             font-weight: 600;
         }
-        .btn-reset:hover { background: #b33a3a; }
+        .btn-reset:hover {
+            background: #b33a3a;
+        }
 
         .select-all-container {
             display: flex;
@@ -133,7 +212,9 @@
             background: white;
             cursor: pointer;
         }
-        .select-all-container button:hover { background: #e9ecef; }
+        .select-all-container button:hover {
+            background: #e9ecef;
+        }
 
         .info-box {
             margin-top: 5px;
@@ -145,8 +226,13 @@
             border-left: 3px solid #d94f4f;
             line-height: 1.4;
         }
-        .info-box strong { color: #1a2a3a; }
-        .info-box .valor { font-weight: 700; color: #d94f4f; }
+        .info-box strong {
+            color: #1a2a3a;
+        }
+        .info-box .valor {
+            font-weight: 700;
+            color: #d94f4f;
+        }
         .info-box .stats {
             font-size: 9px;
             color: #666;
@@ -154,7 +240,10 @@
             border-top: 1px dashed #ddd;
             padding-top: 2px;
         }
-        .info-box .stats span { font-weight: 700; color: #1a2a3a; }
+        .info-box .stats span {
+            font-weight: 700;
+            color: #1a2a3a;
+        }
 
         .legend {
             margin-top: 5px;
@@ -179,10 +268,13 @@
             height: 10px;
             border-radius: 2px;
             margin-right: 5px;
-            border: 1px solid rgba(0,0,0,0.1);
+            border: 1px solid rgba(0, 0, 0, 0.1);
             flex-shrink: 0;
         }
-        .legend-text { font-size: 9px; color: #2c3e50; }
+        .legend-text {
+            font-size: 9px;
+            color: #2c3e50;
+        }
 
         .legend-desc {
             font-size: 8px;
@@ -193,13 +285,88 @@
             font-style: italic;
         }
 
+        /* Modal de estadísticas */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(2px);
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        .modal-content h3 {
+            font-size: 16px;
+            color: #1a2a3a;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #d94f4f;
+            padding-bottom: 6px;
+        }
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 22px;
+            cursor: pointer;
+            color: #888;
+            background: none;
+            border: none;
+        }
+        .modal-close:hover {
+            color: #d94f4f;
+        }
+        .modal-content canvas {
+            max-height: 300px;
+            max-width: 100%;
+        }
+        .modal-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 12px;
+            font-size: 11px;
+        }
+        .modal-stats .stat-item {
+            background: #f8f9fa;
+            padding: 6px 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .modal-stats .stat-item .num {
+            font-weight: 700;
+            color: #d94f4f;
+            font-size: 14px;
+        }
+        .modal-stats .stat-item .label {
+            color: #666;
+            font-size: 9px;
+        }
+
         .footer {
             position: absolute;
             bottom: 6px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0, 0, 0, 0.7);
             color: white;
             padding: 3px 12px;
             border-radius: 14px;
@@ -213,22 +380,69 @@
             .control-panel {
                 top: 6px;
                 right: 6px;
-                max-width: 190px;
+                max-width: 200px;
                 padding: 6px 8px;
             }
-            .control-panel h3 { font-size: 11px; }
-            .control-panel select { font-size: 9px; padding: 2px 5px; }
-            .filtros-container { max-height: 120px; padding: 4px 5px; }
-            .filtro-checkbox { font-size: 9px; }
-            .legend { font-size: 8px; padding: 4px 5px; }
-            .info-box { font-size: 9px; padding: 4px 5px; }
-            .footer { font-size: 7px; padding: 2px 8px; }
+            .control-panel h3 {
+                font-size: 11px;
+            }
+            .control-panel select {
+                font-size: 9px;
+                padding: 2px 5px;
+            }
+            .filtros-container {
+                max-height: 120px;
+                padding: 4px 5px;
+            }
+            .filtro-checkbox {
+                font-size: 9px;
+            }
+            .legend {
+                font-size: 8px;
+                padding: 4px 5px;
+            }
+            .info-box {
+                font-size: 9px;
+                padding: 4px 5px;
+            }
+            .footer {
+                font-size: 7px;
+                padding: 2px 8px;
+            }
+            .modal-content {
+                padding: 14px;
+                max-width: 95%;
+            }
+            .modal-stats {
+                grid-template-columns: 1fr 1fr;
+                gap: 4px;
+            }
+            .search-container input {
+                font-size: 9px;
+                padding: 2px 4px;
+            }
+            .action-buttons button {
+                font-size: 8px;
+                padding: 2px 4px;
+            }
         }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
+
+    <!-- Modal de Estadísticas -->
+    <div class="modal-overlay" id="statsModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeStats()">&times;</button>
+            <h3 id="statsTitle">📊 Estadísticas del indicador</h3>
+            <canvas id="statsChart"></canvas>
+            <div class="modal-stats" id="statsNumbers">
+                <!-- Se llena con JS -->
+            </div>
+        </div>
+    </div>
 
     <div class="control-panel">
         <h3>📊 Explorador socioeconómico</h3>
@@ -249,6 +463,18 @@
             <option value="PERS_VIV">👤 Pers./viv. ocupada</option>
         </select>
 
+        <!-- Buscador -->
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="🔍 Buscar provincia/distrito..." />
+            <button onclick="buscarPoligonos()">Buscar</button>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="action-buttons">
+            <button class="btn-stats" onclick="mostrarEstadisticas()">📊 Estadísticas</button>
+            <button class="btn-export" onclick="exportarCSV()">💾 Exportar CSV</button>
+        </div>
+
         <div id="filtros-container" class="filtros-container">
             <!-- Se llena con JS -->
         </div>
@@ -266,6 +492,7 @@
 
     <div class="footer">Datos: Estudio Socioeconómico 2023 – RAUL VIQUEZ</div>
 
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // ================================================================
@@ -298,6 +525,8 @@
         let geoJsonData = null;
         let allFeatures = [];
         let filtrosActivos = {};
+        let chartInstance = null;
+        let currentFeaturesFiltradas = [];
 
         // ================================================================
         // 3. PALETAS DE COLORES
@@ -329,9 +558,6 @@
             'PERS_VIV': ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486']
         };
 
-        // ================================================================
-        // RANGOS FIJOS POR VARIABLE
-        // ================================================================
         const rangosFijos = {
             'DENS_POB': {
                 min: 0,
@@ -363,18 +589,18 @@
                 min: 0,
                 max: 8000,
                 steps: 5,
-                nombres: ['Muy bajo (0–1600)', 'Bajo (1600–3200)', 'Medio (3200–4800)', 'Alto (4800–6400)', 'Muy alto (6400–8000)']
+                nombres: ['Muy bajo (0–1600)', 'Bajo (1600–3200)', 'Medio (3200–4800)', 'Alto (4800–6400)',
+                    'Muy alto (6400–8000)'
+                ]
             }
         };
 
-        // Nombres genéricos para variables sin rangos fijos
         const rangosNombres = {
             'VIV_OCUP': ['Muy pocas', 'Pocas', 'Medias', 'Muchas', 'Muchísimas'],
             'PORC_OCU': ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'],
             'PERS_VIV': ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto']
         };
 
-        // Descripciones para cada indicador
         const descripcionIndicador = {
             'CAT_DENS': 'Clasificación del territorio según densidad poblacional (hab/km²). Útil para identificar zonas urbanas y rurales.',
             'DENS_POB': 'Número de habitantes por kilómetro cuadrado. Indica la concentración poblacional.',
@@ -383,22 +609,14 @@
             'PERS_VIV': 'Promedio de personas por vivienda ocupada. Valores altos pueden indicar hacinamiento.'
         };
 
-        // ================================================================
-        // FUNCIÓN PARA OBTENER LA CATEGORÍA DE DENSIDAD (CAT_DENS)
-        // ================================================================
-        function getCategoriaDensidad(valor) {
-            if (valor === null || valor === undefined || isNaN(valor)) return 'SIN_DATOS';
-            if (valor < 100) return 'MUY_BAJA';
-            if (valor < 500) return 'BAJA';
-            if (valor < 2000) return 'MEDIA_BAJA';
-            if (valor < 5000) return 'MEDIA';
-            if (valor < 10000) return 'ALTA';
-            return 'MUY_ALTA';
-        }
+        const variableLabels = {
+            'CAT_DENS': 'Categoría de densidad',
+            'DENS_POB': 'Densidad poblacional (hab/km²)',
+            'VIV_OCUP': 'Viviendas ocupadas',
+            'PORC_OCU': '% Ocupación',
+            'PERS_VIV': 'Personas por vivienda ocupada'
+        };
 
-        // ================================================================
-        // FUNCIÓN PARA OBTENER COLOR SEGÚN VARIABLE
-        // ================================================================
         function getColorByValue(variable, value, min, max) {
             if (isNaN(value) || value === null) return '#b0b0b0';
 
@@ -410,7 +628,6 @@
             let t;
 
             if (variable === 'DENS_POB') {
-                // Usar rangos específicos de densidad
                 const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
                 for (let i = 0; i < limites.length - 1; i++) {
                     if (value >= limites[i] && value < limites[i + 1]) {
@@ -434,9 +651,6 @@
             return palette[index];
         }
 
-        // ================================================================
-        // FUNCIÓN PARA OBTENER EL ÍNDICE DE RANGO
-        // ================================================================
         function getRangoIndex(variable, value) {
             if (isNaN(value) || value === null) return 0;
 
@@ -459,28 +673,295 @@
         }
 
         // ================================================================
-        // FUNCIÓN PARA OBTENER EL NOMBRE DEL RANGO
+        // 4. BUSCADOR
         // ================================================================
-        function getRangoNombre(variable, index) {
-            if (variable === 'DENS_POB') {
-                const nombres = [
-                    'Muy baja (<100)',
-                    'Baja (100-500)',
-                    'Media-Baja (500-2000)',
-                    'Media (2000-5000)',
-                    'Alta (5000-10000)',
-                    'Muy alta (>10000)'
-                ];
-                return nombres[index] || `Rango ${index+1}`;
+        function buscarPoligonos() {
+            const texto = document.getElementById('searchInput').value.toLowerCase().trim();
+            if (!texto || !geoJsonData) return;
+
+            // Buscar features que coincidan con provincia o distrito
+            const encontrados = allFeatures.filter(f => {
+                const prov = (f.properties.PROVINCIA || '').toLowerCase();
+                const dist = (f.properties.DISTRITO || '').toLowerCase();
+                return prov.includes(texto) || dist.includes(texto);
+            });
+
+            if (encontrados.length === 0) {
+                alert('No se encontraron polígonos con: ' + texto);
+                return;
             }
-            if (rangosFijos[variable]) {
-                return rangosFijos[variable].nombres[index] || `Rango ${index+1}`;
+
+            // Crear un GeoJSON temporal con los encontrados
+            const geoJsonEncontrados = {
+                type: 'FeatureCollection',
+                features: encontrados
+            };
+
+            // Eliminar capa actual y mostrar solo los encontrados
+            if (currentLayer) {
+                map.removeLayer(currentLayer);
+                currentLayer = null;
             }
-            return rangosNombres[variable]?.[index] || `Rango ${index+1}`;
+
+            currentLayer = L.geoJSON(geoJsonEncontrados, {
+                style: function(feature) {
+                    let value = feature.properties[currentVariable];
+                    let color = '#b0b0b0';
+                    if (currentVariable === 'CAT_DENS') {
+                        color = catColors[value] || '#b0b0b0';
+                    } else {
+                        const numVal = parseFloat(value);
+                        if (!isNaN(numVal) && numVal !== null) {
+                            const r = rangosFijos[currentVariable];
+                            const min = r ? r.min : 0;
+                            const max = r ? r.max : 1;
+                            color = getColorByValue(currentVariable, numVal, min, max);
+                        }
+                    }
+                    return {
+                        fillColor: color,
+                        weight: 2,
+                        opacity: 0.9,
+                        color: '#000000',
+                        fillOpacity: 0.85
+                    };
+                },
+                onEachFeature: function(feature, layer) {
+                    const p = feature.properties;
+                    const areaM2 = p.AREA || 0;
+                    const areaKm2 = areaM2 / 1000000;
+
+                    const popupContent = `
+                            <div style="font-family:'Segoe UI',sans-serif;min-width:170px;max-width:240px;font-size:11px;">
+                                <h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:12px;">${p.PROVINCIA || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
+                                ${p.BARR_NOMB ? `<div style="font-size:10px;color:#666;margin-bottom:2px;">📍 ${p.BARR_NOMB}</div>` : ''}
+                                <hr style="margin:3px 0;border:0;border-top:1px solid #ddd;">
+                                <table style="width:100%;font-size:10px;line-height:1.4;">
+                                    <tr><td><strong>Viviendas:</strong></td><td>${p.VIVIENDA || 0}</td></tr>
+                                    <tr><td><strong>Personas:</strong></td><td>${p.V_PERSONAS || 0}</td></tr>
+                                    <tr><td><strong>Ocupadas:</strong></td><td>${p.VIV_OCUP || 0}</td></tr>
+                                    <tr><td><strong>% Ocupación:</strong></td><td>${p.PORC_OCU ? p.PORC_OCU.toFixed(1) : 0}%</td></tr>
+                                    <tr><td><strong>Densidad:</strong></td><td>${p.DENS_POB ? p.DENS_POB.toFixed(1) : 0} hab/km²</td></tr>
+                                    <tr><td><strong>Pers./viv. ocupada:</strong></td><td>${p.PERS_VIV ? p.PERS_VIV.toFixed(2) : 0}</td></tr>
+                                    <tr><td><strong>Categoría:</strong></td><td>${p.CAT_DENS || 'Sin datos'}</td></tr>
+                                    <tr><td><strong>Área:</strong></td><td>${areaKm2.toFixed(2)} km² (${areaM2.toFixed(0)} m²)</td></tr>
+                                </table>
+                            </div>
+                        `;
+                    layer.bindPopup(popupContent);
+                }
+            }).addTo(map);
+
+            // Ajustar zoom a los resultados
+            const bounds = L.geoJSON(geoJsonEncontrados).getBounds();
+            if (bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [40, 40] });
+            }
+
+            document.getElementById('count-mostrados').textContent = encontrados.length;
+            document.getElementById('count-total').textContent = allFeatures.length;
+            document.getElementById('info-value').textContent = `🔍 Resultados de búsqueda: ${encontrados.length} polígonos`;
+
+            // Actualizar leyenda
+            updateLegend(currentVariable, geoJsonEncontrados);
         }
 
         // ================================================================
-        // 4. FILTROS
+        // 5. EXPORTAR CSV
+        // ================================================================
+        function exportarCSV() {
+            if (!geoJsonData || allFeatures.length === 0) {
+                alert('No hay datos para exportar');
+                return;
+            }
+
+            const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
+
+            // Crear cabeceras
+            const headers = ['PROVINCIA', 'DISTRITO', 'BARR_NOMB', 'VIVIENDA', 'V_PERSONAS',
+                'VIV_OCUP', 'PORC_OCU', 'DENS_POB', 'PERS_VIV', 'CAT_DENS', 'AREA_KM2'
+            ];
+
+            // Crear filas
+            const rows = features.map(f => {
+                const p = f.properties;
+                return [
+                    p.PROVINCIA || '',
+                    p.DISTRITO || '',
+                    p.BARR_NOMB || '',
+                    p.VIVIENDA || 0,
+                    p.V_PERSONAS || 0,
+                    p.VIV_OCUP || 0,
+                    p.PORC_OCU ? p.PORC_OCU.toFixed(1) : 0,
+                    p.DENS_POB ? p.DENS_POB.toFixed(1) : 0,
+                    p.PERS_VIV ? p.PERS_VIV.toFixed(2) : 0,
+                    p.CAT_DENS || '',
+                    ((p.AREA || 0) / 1000000).toFixed(4)
+                ];
+            });
+
+            // Generar CSV
+            let csv = headers.join(',') + '\n';
+            rows.forEach(row => {
+                csv += row.join(',') + '\n';
+            });
+
+            // Descargar
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `datos_socioeconomicos_${currentVariable}.csv`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        // ================================================================
+        // 6. ESTADÍSTICAS (Gráfico)
+        // ================================================================
+        let chartInstance = null;
+
+        function mostrarEstadisticas() {
+            const modal = document.getElementById('statsModal');
+            modal.classList.add('active');
+
+            const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
+            const variable = currentVariable;
+
+            document.getElementById('statsTitle').textContent = `📊 Estadísticas: ${variableLabels[variable] || variable}`;
+
+            // Preparar datos para el gráfico
+            let labels = [];
+            let data = [];
+            let colors = [];
+
+            if (variable === 'CAT_DENS') {
+                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                const counts = {};
+                categories.forEach(c => counts[c] = 0);
+                features.forEach(f => {
+                    const cat = f.properties[variable] || 'SIN_DATOS';
+                    counts[cat] = (counts[cat] || 0) + 1;
+                });
+                labels = categories.map(c => catLabels[c] || c);
+                data = categories.map(c => counts[c] || 0);
+                colors = categories.map(c => catColors[c] || '#b0b0b0');
+            } else {
+                // Variables numéricas
+                const r = rangosFijos[variable];
+                const stepCount = r ? r.steps : 5;
+                const nombres = r ? r.nombres : ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+                const counts = new Array(stepCount).fill(0);
+
+                features.forEach(f => {
+                    const val = parseFloat(f.properties[variable]);
+                    if (!isNaN(val) && val !== null) {
+                        const idx = getRangoIndex(variable, val);
+                        if (idx < counts.length) counts[idx]++;
+                    }
+                });
+
+                labels = nombres;
+                data = counts;
+                if (r) {
+                    colors = [];
+                    for (let i = 0; i < stepCount; i++) {
+                        const minVal = r.min + (r.max - r.min) * (i / stepCount);
+                        const maxVal = r.min + (r.max - r.min) * ((i + 1) / stepCount);
+                        colors.push(getColorByValue(variable, (minVal + maxVal) / 2, r.min, r.max));
+                    }
+                } else {
+                    colors = ['#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#084594'];
+                }
+            }
+
+            // Estadísticas numéricas
+            const statsDiv = document.getElementById('statsNumbers');
+            let statsHTML = '';
+            if (variable !== 'CAT_DENS') {
+                const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
+                if (valores.length > 0) {
+                    const sum = valores.reduce((a, b) => a + b, 0);
+                    const mean = sum / valores.length;
+                    const sorted = [...valores].sort((a, b) => a - b);
+                    const median = sorted.length % 2 === 0 ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2 :
+                        sorted[Math.floor(sorted.length / 2)];
+                    const min = sorted[0];
+                    const max = sorted[sorted.length - 1];
+
+                    statsHTML = `
+                            <div class="stat-item"><span class="num">${valores.length}</span><div class="label">Registros</div></div>
+                            <div class="stat-item"><span class="num">${mean.toFixed(2)}</span><div class="label">Promedio</div></div>
+                            <div class="stat-item"><span class="num">${median.toFixed(2)}</span><div class="label">Mediana</div></div>
+                            <div class="stat-item"><span class="num">${min.toFixed(2)} - ${max.toFixed(2)}</span><div class="label">Mínimo - Máximo</div></div>
+                        `;
+                }
+            } else {
+                const total = data.reduce((a, b) => a + b, 0);
+                statsHTML = `
+                        <div class="stat-item"><span class="num">${total}</span><div class="label">Total polígonos</div></div>
+                        <div class="stat-item"><span class="num">${data.filter(d => d > 0).length}</span><div class="label">Categorías con datos</div></div>
+                    `;
+            }
+            statsDiv.innerHTML = statsHTML;
+
+            // Crear gráfico
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('statsChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Polígonos',
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: colors.map(c => c),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y + ' polígonos';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { font: { size: 9 } }
+                        },
+                        x: {
+                            ticks: { font: { size: 8 }, maxRotation: 30 }
+                        }
+                    }
+                }
+            });
+        }
+
+        function closeStats() {
+            document.getElementById('statsModal').classList.remove('active');
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
+        }
+
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('statsModal').addEventListener('click', function(e) {
+            if (e.target === this) closeStats();
+        });
+
+        // ================================================================
+        // 7. FILTROS
         // ================================================================
         function getFiltros() {
             const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
@@ -510,7 +991,7 @@
         }
 
         // ================================================================
-        // 5. ACTUALIZAR MAPA
+        // 8. ACTUALIZAR MAPA
         // ================================================================
         function updateMapWithFilters() {
             if (!geoJsonData) return;
@@ -522,6 +1003,7 @@
             }
 
             const featuresFiltradas = aplicarFiltros(allFeatures, variable);
+            currentFeaturesFiltradas = featuresFiltradas;
 
             document.getElementById('count-mostrados').textContent = featuresFiltradas.length;
             document.getElementById('count-total').textContent = allFeatures.length;
@@ -615,7 +1097,7 @@
         }
 
         // ================================================================
-        // 6. CONSTRUIR FILTROS
+        // 9. CONSTRUIR FILTROS
         // ================================================================
         function construirFiltros(variable) {
             const container = document.getElementById('filtros-container');
@@ -644,7 +1126,6 @@
                         `;
                 }
             } else {
-                // Variables numéricas con rangos fijos
                 let stepCount = 5;
                 let nombresRango = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
 
@@ -699,7 +1180,7 @@
         }
 
         // ================================================================
-        // 7. CONTADORES
+        // 10. CONTADORES
         // ================================================================
         function actualizarContadores() {
             const variable = currentVariable;
@@ -744,7 +1225,7 @@
         }
 
         // ================================================================
-        // 8. TOGGLE ALL Y RESET
+        // 11. TOGGLE ALL Y RESET
         // ================================================================
         function toggleAllFiltros(estado) {
             const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
@@ -761,16 +1242,25 @@
                 cb.checked = true;
                 filtrosActivos[cb.value] = true;
             });
+            // Limpiar búsqueda
+            document.getElementById('searchInput').value = '';
+            // Restaurar vista completa
+            if (geoJsonData) {
+                const bounds = L.geoJSON(geoJsonData).getBounds();
+                if (bounds.isValid()) {
+                    map.fitBounds(bounds, { padding: [20, 20] });
+                }
+            }
             updateMapWithFilters();
         }
 
         // ================================================================
-        // 9. LEYENDA CON DESCRIPCIÓN - CORREGIDA
+        // 12. LEYENDA
         // ================================================================
         function updateLegend(variable, data) {
             const legendDiv = document.getElementById('legend');
             let html = `<div class="legend-title">Leyenda</div>`;
-        
+
             if (variable === 'CAT_DENS') {
                 const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 for (const cat of categories) {
@@ -782,7 +1272,6 @@
                         `;
                 }
             } else if (variable === 'DENS_POB') {
-                // Rangos específicos de densidad
                 const rangos = [
                     { min: 0, max: 100, label: 'Muy baja (<100)' },
                     { min: 100, max: 500, label: 'Baja (100-500)' },
@@ -791,7 +1280,7 @@
                     { min: 5000, max: 10000, label: 'Alta (5000-10000)' },
                     { min: 10000, max: 20000, label: 'Muy alta (>10000)' }
                 ];
-        
+
                 for (const r of rangos) {
                     const valorMedio = (r.min + r.max) / 2;
                     const color = getColorByValue('DENS_POB', valorMedio, 0, 20000);
@@ -803,7 +1292,6 @@
                         `;
                 }
             } else if (variable === 'VIV_OCUP') {
-                // Rangos específicos para Viviendas Ocupadas
                 const rangos = [
                     { min: 0, max: 1600, label: 'Muy bajo (0-1600)' },
                     { min: 1600, max: 3200, label: 'Bajo (1600-3200)' },
@@ -811,7 +1299,7 @@
                     { min: 4800, max: 6400, label: 'Alto (4800-6400)' },
                     { min: 6400, max: 8000, label: 'Muy alto (6400-8000)' }
                 ];
-        
+
                 for (const r of rangos) {
                     const valorMedio = (r.min + r.max) / 2;
                     const color = getColorByValue('VIV_OCUP', valorMedio, 0, 8000);
@@ -823,7 +1311,6 @@
                         `;
                 }
             } else if (variable === 'PORC_OCU') {
-                // Rangos específicos para % Ocupación
                 const rangos = [
                     { min: 0, max: 20, label: 'Muy bajo (0-20%)' },
                     { min: 20, max: 40, label: 'Bajo (20-40%)' },
@@ -831,7 +1318,7 @@
                     { min: 60, max: 80, label: 'Alto (60-80%)' },
                     { min: 80, max: 100, label: 'Muy alto (80-100%)' }
                 ];
-        
+
                 for (const r of rangos) {
                     const valorMedio = (r.min + r.max) / 2;
                     const color = getColorByValue('PORC_OCU', valorMedio, 0, 100);
@@ -843,7 +1330,6 @@
                         `;
                 }
             } else if (variable === 'PERS_VIV') {
-                // Rangos específicos para Personas por vivienda ocupada
                 const rangos = [
                     { min: 0, max: 1.2, label: 'Muy bajo (0.0-1.2)' },
                     { min: 1.2, max: 2.4, label: 'Bajo (1.2-2.4)' },
@@ -851,7 +1337,7 @@
                     { min: 3.6, max: 4.8, label: 'Alto (3.6-4.8)' },
                     { min: 4.8, max: 6.0, label: 'Muy alto (4.8-6.0)' }
                 ];
-        
+
                 for (const r of rangos) {
                     const valorMedio = (r.min + r.max) / 2;
                     const color = getColorByValue('PERS_VIV', valorMedio, 0, 6);
@@ -863,12 +1349,11 @@
                         `;
                 }
             } else {
-                // Otras variables numéricas (fallback)
                 let stepCount = 5;
                 let nombres = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
                 let minVal = 0,
                     maxVal = 1;
-        
+
                 if (rangosFijos[variable]) {
                     const r = rangosFijos[variable];
                     stepCount = r.steps;
@@ -876,7 +1361,7 @@
                     minVal = r.min;
                     maxVal = r.max;
                 }
-        
+
                 for (let i = 0; i < stepCount; i++) {
                     const low = minVal + (maxVal - minVal) * (i / stepCount);
                     const high = minVal + (maxVal - minVal) * ((i + 1) / stepCount);
@@ -890,18 +1375,17 @@
                         `;
                 }
             }
-        
-            // Descripción del indicador
+
             const desc = descripcionIndicador[variable] || '';
             if (desc) {
-                html += `<div class="legend-desc">💡 ${desc}</div>`;
+                html += `<div class="legend-desc">💡 ${desc}</div>';
             }
-        
+
             legendDiv.innerHTML = html;
         }
 
         // ================================================================
-        // 10. CARGA DEL GEOJSON
+        // 13. CARGA DEL GEOJSON
         // ================================================================
         async function loadGeoJSON() {
             try {
@@ -912,7 +1396,6 @@
                 allFeatures = data.features;
                 console.log('✅ GeoJSON cargado:', allFeatures.length, 'features');
 
-                // Inicializar filtros
                 const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 for (const cat of categories) filtrosActivos[cat] = true;
                 for (let i = 0; i < 6; i++) filtrosActivos[`rango_${i}`] = true;
@@ -937,7 +1420,7 @@
         }
 
         // ================================================================
-        // 11. EVENTOS
+        // 14. EVENTOS
         // ================================================================
         document.getElementById('variable-select').addEventListener('change', function(e) {
             if (geoJsonData) {
@@ -953,6 +1436,8 @@
                         if (filtrosActivos[`rango_${i}`] === undefined) filtrosActivos[`rango_${i}`] = true;
                     }
                 }
+                // Limpiar búsqueda al cambiar indicador
+                document.getElementById('searchInput').value = '';
                 construirFiltros(currentVariable);
                 updateMapWithFilters();
             }
@@ -968,11 +1453,20 @@
             else if (value === 'topo') topoLayer.addTo(map);
         });
 
+        // Enter en el buscador
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') buscarPoligonos();
+        });
+
         window.toggleAllFiltros = toggleAllFiltros;
         window.resetFiltros = resetFiltros;
+        window.buscarPoligonos = buscarPoligonos;
+        window.exportarCSV = exportarCSV;
+        window.mostrarEstadisticas = mostrarEstadisticas;
+        window.closeStats = closeStats;
 
         // ================================================================
-        // 12. INICIO
+        // 15. INICIO
         // ================================================================
         loadGeoJSON();
         console.log('🗺️ Mapa interactivo iniciado – RAUL VIQUEZ');
