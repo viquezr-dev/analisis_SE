@@ -672,6 +672,14 @@
             return 0;
         }
 
+        function closeStats() {
+            document.getElementById('statsModal').classList.remove('active');
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
+        }
+
         // ================================================================
         // 4. BUSCADOR
         // ================================================================
@@ -679,7 +687,6 @@
             const texto = document.getElementById('searchInput').value.toLowerCase().trim();
             if (!texto || !geoJsonData) return;
 
-            // Buscar features que coincidan con provincia o distrito
             const encontrados = allFeatures.filter(f => {
                 const prov = (f.properties.PROVINCIA || '').toLowerCase();
                 const dist = (f.properties.DISTRITO || '').toLowerCase();
@@ -691,13 +698,11 @@
                 return;
             }
 
-            // Crear un GeoJSON temporal con los encontrados
             const geoJsonEncontrados = {
                 type: 'FeatureCollection',
                 features: encontrados
             };
 
-            // Eliminar capa actual y mostrar solo los encontrados
             if (currentLayer) {
                 map.removeLayer(currentLayer);
                 currentLayer = null;
@@ -752,7 +757,6 @@
                 }
             }).addTo(map);
 
-            // Ajustar zoom a los resultados
             const bounds = L.geoJSON(geoJsonEncontrados).getBounds();
             if (bounds.isValid()) {
                 map.fitBounds(bounds, { padding: [40, 40] });
@@ -761,8 +765,6 @@
             document.getElementById('count-mostrados').textContent = encontrados.length;
             document.getElementById('count-total').textContent = allFeatures.length;
             document.getElementById('info-value').textContent = `🔍 Resultados de búsqueda: ${encontrados.length} polígonos`;
-
-            // Actualizar leyenda
             updateLegend(currentVariable, geoJsonEncontrados);
         }
 
@@ -777,12 +779,10 @@
 
             const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
 
-            // Crear cabeceras
             const headers = ['PROVINCIA', 'DISTRITO', 'BARR_NOMB', 'VIVIENDA', 'V_PERSONAS',
                 'VIV_OCUP', 'PORC_OCU', 'DENS_POB', 'PERS_VIV', 'CAT_DENS', 'AREA_KM2'
             ];
 
-            // Crear filas
             const rows = features.map(f => {
                 const p = f.properties;
                 return [
@@ -800,13 +800,11 @@
                 ];
             });
 
-            // Generar CSV
             let csv = headers.join(',') + '\n';
             rows.forEach(row => {
                 csv += row.join(',') + '\n';
             });
 
-            // Descargar
             const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
@@ -818,169 +816,316 @@
         // ================================================================
         // 6. ESTADÍSTICAS (Gráfico)
         // ================================================================
-       
+        function mostrarEstadisticas() {
+            const modal = document.getElementById('statsModal');
+            modal.classList.add('active');
 
-       function mostrarEstadisticas() {
-                const modal = document.getElementById('statsModal');
-                modal.classList.add('active');
-            
-                const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
-                const variable = currentVariable;
-            
-                document.getElementById('statsTitle').textContent = `📊 Estadísticas: ${variableLabels[variable] || variable}`;
-            
-                // Preparar datos para el gráfico
-                let labels = [];
-                let data = [];
-                let colors = [];
-            
-                if (variable === 'CAT_DENS') {
-                    const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
-                    const counts = {};
-                    categories.forEach(c => counts[c] = 0);
-                    features.forEach(f => {
-                        const cat = f.properties[variable] || 'SIN_DATOS';
-                        counts[cat] = (counts[cat] || 0) + 1;
-                    });
-                    labels = categories.map(c => catLabels[c] || c);
-                    data = categories.map(c => counts[c] || 0);
-                    colors = categories.map(c => catColors[c] || '#b0b0b0');
-                } else {
-                    // Variables numéricas
-                    const r = rangosFijos[variable];
-                    const stepCount = r ? r.steps : 5;
-                    const nombres = r ? r.nombres : ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
-                    const counts = new Array(stepCount).fill(0);
-            
-                    features.forEach(f => {
-                        const val = parseFloat(f.properties[variable]);
-                        if (!isNaN(val) && val !== null) {
-                            const idx = getRangoIndex(variable, val);
-                            if (idx < counts.length) counts[idx]++;
-                        }
-                    });
-            
-                    labels = nombres;
-                    data = counts;
-                    if (r) {
-                        colors = [];
-                        for (let i = 0; i < stepCount; i++) {
-                            const minVal = r.min + (r.max - r.min) * (i / stepCount);
-                            const maxVal = r.min + (r.max - r.min) * ((i + 1) / stepCount);
-                            colors.push(getColorByValue(variable, (minVal + maxVal) / 2, r.min, r.max));
-                        }
-                    } else {
-                        colors = ['#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#084594'];
-                    }
-                }
-            
-                // Estadísticas numéricas
-                const statsDiv = document.getElementById('statsNumbers');
-                let statsHTML = '';
-                if (variable !== 'CAT_DENS') {
-                    const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
-                    if (valores.length > 0) {
-                        const sum = valores.reduce((a, b) => a + b, 0);
-                        const mean = sum / valores.length;
-                        const sorted = [...valores].sort((a, b) => a - b);
-                        const median = sorted.length % 2 === 0 ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2 :
-                            sorted[Math.floor(sorted.length / 2)];
-                        const min = sorted[0];
-                        const max = sorted[sorted.length - 1];
-            
-                        statsHTML = `
-                                <div class="stat-item"><span class="num">${valores.length}</span><div class="label">Registros</div></div>
-                                <div class="stat-item"><span class="num">${mean.toFixed(2)}</span><div class="label">Promedio</div></div>
-                                <div class="stat-item"><span class="num">${median.toFixed(2)}</span><div class="label">Mediana</div></div>
-                                <div class="stat-item"><span class="num">${min.toFixed(2)} - ${max.toFixed(2)}</span><div class="label">Mínimo - Máximo</div></div>
-                            `;
-                    }
-                } else {
-                    const total = data.reduce((a, b) => a + b, 0);
-                    statsHTML = `
-                            <div class="stat-item"><span class="num">${total}</span><div class="label">Total polígonos</div></div>
-                            <div class="stat-item"><span class="num">${data.filter(d => d > 0).length}</span><div class="label">Categorías con datos</div></div>
-                        `;
-                }
-                statsDiv.innerHTML = statsHTML;
-            
-                // Crear gráfico (usando la variable global chartInstance)
-                if (chartInstance) {
-                    chartInstance.destroy();
-                }
-            
-                const ctx = document.getElementById('statsChart').getContext('2d');
-                chartInstance = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Polígonos',
-                            data: data,
-                            backgroundColor: colors,
-                            borderColor: colors.map(c => c),
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return context.parsed.y + ' polígonos';
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: { font: { size: 9 } }
-                            },
-                            x: {
-                                ticks: { font: { size: 8 }, maxRotation: 30 }
-                            }
-                        }
+            const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
+            const variable = currentVariable;
+
+            document.getElementById('statsTitle').textContent = `📊 Estadísticas: ${variableLabels[variable] || variable}`;
+
+            let labels = [];
+            let data = [];
+            let colors = [];
+
+            if (variable === 'CAT_DENS') {
+                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                const counts = {};
+                categories.forEach(c => counts[c] = 0);
+                features.forEach(f => {
+                    const cat = f.properties[variable] || 'SIN_DATOS';
+                    counts[cat] = (counts[cat] || 0) + 1;
+                });
+                labels = categories.map(c => catLabels[c] || c);
+                data = categories.map(c => counts[c] || 0);
+                colors = categories.map(c => catColors[c] || '#b0b0b0');
+            } else {
+                const r = rangosFijos[variable];
+                const stepCount = r ? r.steps : 5;
+                const nombres = r ? r.nombres : ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+                const counts = new Array(stepCount).fill(0);
+
+                features.forEach(f => {
+                    const val = parseFloat(f.properties[variable]);
+                    if (!isNaN(val) && val !== null) {
+                        const idx = getRangoIndex(variable, val);
+                        if (idx < counts.length) counts[idx]++;
                     }
                 });
+
+                labels = nombres;
+                data = counts;
+                if (r) {
+                    colors = [];
+                    for (let i = 0; i < stepCount; i++) {
+                        const minVal = r.min + (r.max - r.min) * (i / stepCount);
+                        const maxVal = r.min + (r.max - r.min) * ((i + 1) / stepCount);
+                        colors.push(getColorByValue(variable, (minVal + maxVal) / 2, r.min, r.max));
+                    }
+                } else {
+                    colors = ['#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#084594'];
+                }
             }
 
+            const statsDiv = document.getElementById('statsNumbers');
+            let statsHTML = '';
+            if (variable !== 'CAT_DENS') {
+                const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
+                if (valores.length > 0) {
+                    const sum = valores.reduce((a, b) => a + b, 0);
+                    const mean = sum / valores.length;
+                    const sorted = [...valores].sort((a, b) => a - b);
+                    const median = sorted.length % 2 === 0 ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2 :
+                        sorted[Math.floor(sorted.length / 2)];
+                    const min = sorted[0];
+                    const max = sorted[sorted.length - 1];
+
+                    statsHTML = `
+                            <div class="stat-item"><span class="num">${valores.length}</span><div class="label">Registros</div></div>
+                            <div class="stat-item"><span class="num">${mean.toFixed(2)}</span><div class="label">Promedio</div></div>
+                            <div class="stat-item"><span class="num">${median.toFixed(2)}</span><div class="label">Mediana</div></div>
+                            <div class="stat-item"><span class="num">${min.toFixed(2)} - ${max.toFixed(2)}</span><div class="label">Mínimo - Máximo</div></div>
+                        `;
+                }
+            } else {
+                const total = data.reduce((a, b) => a + b, 0);
+                statsHTML = `
+                        <div class="stat-item"><span class="num">${total}</span><div class="label">Total polígonos</div></div>
+                        <div class="stat-item"><span class="num">${data.filter(d => d > 0).length}</span><div class="label">Categorías con datos</div></div>
+                    `;
+            }
+            statsDiv.innerHTML = statsHTML;
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('statsChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Polígonos',
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: colors.map(c => c),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y + ' polígonos';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { font: { size: 9 } }
+                        },
+                        x: {
+                            ticks: { font: { size: 8 }, maxRotation: 30 }
+                        }
+                    }
+                }
+            });
+        }
+
         // ================================================================
-        // 7. FILTROS
+        // 7. FILTROS - VERSIÓN COMPLETAMENTE CORREGIDA
         // ================================================================
         function getFiltros() {
             const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
             const activos = {};
-            checkboxes.forEach(cb => {
-                // Usar el value directamente como clave
-                const valor = cb.value;
-                activos[valor] = cb.checked;
+            checkboxes.forEach(function(cb) {
+                activos[cb.value] = cb.checked;
             });
             return activos;
         }
-        
+
         function aplicarFiltros(features, variable) {
             const activos = getFiltros();
-            // Verificar si al menos un filtro está activo
-            const algunActivo = Object.values(activos).some(v => v === true);
+            let algunActivo = false;
+            for (var key in activos) {
+                if (activos[key] === true) {
+                    algunActivo = true;
+                    break;
+                }
+            }
             if (!algunActivo) return [];
-        
-            return features.filter(f => {
-                let key;
+
+            var resultados = [];
+            for (var i = 0; i < features.length; i++) {
+                var f = features[i];
+                var key;
                 if (variable === 'CAT_DENS') {
                     key = f.properties[variable] || 'SIN_DATOS';
-                    return activos[key] !== false;
+                    if (activos[key] !== false) {
+                        resultados.push(f);
+                    }
                 } else {
-                    const val = parseFloat(f.properties[variable]);
-                    if (isNaN(val) || val === null) return false;
-                    const index = getRangoIndex(variable, val);
-                    // Usar template string de forma explícita
+                    var val = parseFloat(f.properties[variable]);
+                    if (isNaN(val) || val === null) continue;
+                    var index = getRangoIndex(variable, val);
                     key = 'rango_' + index;
-                    return activos[key] !== false;
+                    if (activos[key] !== false) {
+                        resultados.push(f);
+                    }
                 }
-            });
+            }
+            return resultados;
+        }
+
+        function construirFiltros(variable) {
+            var container = document.getElementById('filtros-container');
+            var html = '';
+            var items = [];
+            var nombres = [];
+
+            if (variable === 'CAT_DENS') {
+                items = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                nombres = items.map(function(c) { return catLabels[c]; });
+                html = '<h4>🔍 Filtrar por categoría:</h4>';
+                html += '<div class="select-all-container">' +
+                    '<button onclick="toggleAllFiltros(true)">✅ Todo</button>' +
+                    '<button onclick="toggleAllFiltros(false)">❌ Nada</button>' +
+                    '</div>';
+                for (var i = 0; i < items.length; i++) {
+                    var key = items[i];
+                    var checked = filtrosActivos[key] !== false;
+                    html += '<label class="filtro-checkbox">' +
+                        '<input type="checkbox" value="' + key + '" ' + (checked ? 'checked' : '') + ' />' +
+                        '<span class="color-muestra" style="background:' + catColors[key] + ';"></span>' +
+                        '<span>' + nombres[i] + '</span>' +
+                        '<span class="count-badge" id="count-' + key + '">0</span>' +
+                        '</label>';
+                }
+            } else {
+                var stepCount = 5;
+                var nombresRango = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+
+                if (variable === 'DENS_POB') {
+                    stepCount = 6;
+                    nombresRango = [
+                        'Muy baja (<100)',
+                        'Baja (100-500)',
+                        'Media-Baja (500-2000)',
+                        'Media (2000-5000)',
+                        'Alta (5000-10000)',
+                        'Muy alta (>10000)'
+                    ];
+                } else if (rangosFijos[variable]) {
+                    var r = rangosFijos[variable];
+                    stepCount = r.steps;
+                    nombresRango = r.nombres;
+                }
+
+                html = '<h4>🔍 Filtrar por rango:</h4>';
+                html += '<div class="select-all-container">' +
+                    '<button onclick="toggleAllFiltros(true)">✅ Todo</button>' +
+                    '<button onclick="toggleAllFiltros(false)">❌ Nada</button>' +
+                    '</div>';
+                for (var j = 0; j < stepCount; j++) {
+                    var key = 'rango_' + j;
+                    var checked = filtrosActivos[key] !== false;
+                    var color = '#cccccc';
+                    if (variable === 'DENS_POB') {
+                        var limites = [0, 100, 500, 2000, 5000, 10000, 20000];
+                        var minVal = limites[j];
+                        var maxVal = limites[j + 1];
+                        var valorMedio = (minVal + maxVal) / 2;
+                        color = getColorByValue(variable, valorMedio, 0, 20000);
+                    } else if (rangosFijos[variable]) {
+                        var r2 = rangosFijos[variable];
+                        var minVal2 = r2.min + (r2.max - r2.min) * (j / stepCount);
+                        var maxVal2 = r2.min + (r2.max - r2.min) * ((j + 1) / stepCount);
+                        var valorMedio2 = (minVal2 + maxVal2) / 2;
+                        color = getColorByValue(variable, valorMedio2, r2.min, r2.max);
+                    } else {
+                        color = getColorByValue(variable, j / stepCount, 0, 1);
+                    }
+                    html += '<label class="filtro-checkbox">' +
+                        '<input type="checkbox" value="' + key + '" ' + (checked ? 'checked' : '') + ' />' +
+                        '<span class="color-muestra" style="background:' + color + ';"></span>' +
+                        '<span>' + nombresRango[j] + '</span>' +
+                        '<span class="count-badge" id="count-' + key + '">0</span>' +
+                        '</label>';
+                }
+            }
+
+            html += '<button class="btn-reset" onclick="resetFiltros()">🔄 Restablecer filtros</button>';
+            container.innerHTML = html;
+
+            var checkboxes = container.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
+            for (var k = 0; k < checkboxes.length; k++) {
+                (function(cb) {
+                    cb.addEventListener('change', function() {
+                        filtrosActivos[this.value] = this.checked;
+                        updateMapWithFilters();
+                        actualizarContadores();
+                    });
+                })(checkboxes[k]);
+            }
+
+            actualizarContadores();
+        }
+
+        function actualizarContadores() {
+            var variable = currentVariable;
+            if (variable === 'CAT_DENS') {
+                var categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                for (var i = 0; i < categories.length; i++) {
+                    var cat = categories[i];
+                    var count = 0;
+                    for (var j = 0; j < allFeatures.length; j++) {
+                        if ((allFeatures[j].properties['CAT_DENS'] || 'SIN_DATOS') === cat) {
+                            count++;
+                        }
+                    }
+                    var el = document.getElementById('count-' + cat);
+                    if (el) el.textContent = count;
+                }
+            } else {
+                var stepCount = 5;
+                if (variable === 'DENS_POB') stepCount = 6;
+                else if (rangosFijos[variable]) stepCount = rangosFijos[variable].steps;
+
+                for (var i2 = 0; i2 < stepCount; i2++) {
+                    var key = 'rango_' + i2;
+                    var count2 = 0;
+
+                    if (variable === 'DENS_POB') {
+                        var limites = [0, 100, 500, 2000, 5000, 10000, 20000];
+                        for (var j2 = 0; j2 < allFeatures.length; j2++) {
+                            var val = parseFloat(allFeatures[j2].properties[variable]);
+                            if (!isNaN(val) && val !== null && val >= limites[i2] && val < limites[i2 + 1]) {
+                                count2++;
+                            }
+                        }
+                    } else if (rangosFijos[variable]) {
+                        var r = rangosFijos[variable];
+                        var minVal = r.min + (r.max - r.min) * (i2 / stepCount);
+                        var maxVal = r.min + (r.max - r.min) * ((i2 + 1) / stepCount);
+                        for (var j3 = 0; j3 < allFeatures.length; j3++) {
+                            var val2 = parseFloat(allFeatures[j3].properties[variable]);
+                            if (!isNaN(val2) && val2 !== null && val2 >= minVal && val2 < maxVal) {
+                                count2++;
+                            }
+                        }
+                    }
+
+                    var el2 = document.getElementById('count-' + key);
+                    if (el2) el2.textContent = count2;
+                }
+            }
         }
 
         // ================================================================
@@ -988,51 +1133,43 @@
         // ================================================================
         function updateMapWithFilters() {
             if (!geoJsonData) return;
-            const variable = currentVariable;
-        
-            // Eliminar capa anterior
+            var variable = currentVariable;
+
             if (currentLayer) {
                 map.removeLayer(currentLayer);
                 currentLayer = null;
             }
-        
-            // Aplicar filtros
-            const featuresFiltradas = aplicarFiltros(allFeatures, variable);
+
+            var featuresFiltradas = aplicarFiltros(allFeatures, variable);
             currentFeaturesFiltradas = featuresFiltradas;
-        
-            // Actualizar contadores
+
             document.getElementById('count-mostrados').textContent = featuresFiltradas.length;
             document.getElementById('count-total').textContent = allFeatures.length;
-        
-            // Crear GeoJSON filtrado
-            const geoJsonFiltrado = {
+
+            if (featuresFiltradas.length === 0) {
+                document.getElementById('info-value').textContent = '⚠️ No hay polígonos con los filtros seleccionados';
+                document.getElementById('legend').innerHTML = '<div class="legend-title">Leyenda</div><div style="color:#999;font-size:10px;">Sin datos para mostrar</div>';
+                return;
+            }
+
+            var geoJsonFiltrado = {
                 type: 'FeatureCollection',
                 features: featuresFiltradas
             };
-        
-            // Verificar si hay datos para mostrar
-            if (featuresFiltradas.length === 0) {
-                // Mostrar mensaje en el info box
-                document.getElementById('info-value').textContent = '⚠️ No hay polígonos con los filtros seleccionados';
-                // Limpiar leyenda
-                document.getElementById('legend').innerHTML = `<div class="legend-title">Leyenda</div><div style="color:#999;font-size:10px;">Sin datos para mostrar</div>`;
-                return;
-            }
-        
-            // Crear nueva capa
+
             currentLayer = L.geoJSON(geoJsonFiltrado, {
                 style: function(feature) {
-                    let value = feature.properties[variable];
-                    let color = '#b0b0b0';
-        
+                    var value = feature.properties[variable];
+                    var color = '#b0b0b0';
+
                     if (variable === 'CAT_DENS') {
                         color = catColors[value] || '#b0b0b0';
                     } else {
-                        const numVal = parseFloat(value);
+                        var numVal = parseFloat(value);
                         if (!isNaN(numVal) && numVal !== null) {
-                            const r = rangosFijos[variable];
-                            const min = r ? r.min : 0;
-                            const max = r ? r.max : 1;
+                            var r = rangosFijos[variable];
+                            var min = r ? r.min : 0;
+                            var max = r ? r.max : 1;
                             color = getColorByValue(variable, numVal, min, max);
                         }
                     }
@@ -1045,44 +1182,47 @@
                     };
                 },
                 onEachFeature: function(feature, layer) {
-                    const p = feature.properties;
-                    const areaM2 = p.AREA || 0;
-                    const areaKm2 = areaM2 / 1000000;
-        
-                    const popupContent = `
-                            <div style="font-family:'Segoe UI',sans-serif;min-width:170px;max-width:240px;font-size:11px;">
-                                <h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:12px;">${p.PROVINCIA || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
-                                ${p.BARR_NOMB ? `<div style="font-size:10px;color:#666;margin-bottom:2px;">📍 ${p.BARR_NOMB}</div>` : ''}
-                                <hr style="margin:3px 0;border:0;border-top:1px solid #ddd;">
-                                <table style="width:100%;font-size:10px;line-height:1.4;">
-                                    <tr><td><strong>Viviendas:</strong></td><td>${p.VIVIENDA || 0}</td></tr>
-                                    <tr><td><strong>Personas:</strong></td><td>${p.V_PERSONAS || 0}</td></tr>
-                                    <tr><td><strong>Ocupadas:</strong></td><td>${p.VIV_OCUP || 0}</td></tr>
-                                    <tr><td><strong>% Ocupación:</strong></td><td>${p.PORC_OCU ? p.PORC_OCU.toFixed(1) : 0}%</td></tr>
-                                    <tr><td><strong>Densidad:</strong></td><td>${p.DENS_POB ? p.DENS_POB.toFixed(1) : 0} hab/km²</td></tr>
-                                    <tr><td><strong>Pers./viv. ocupada:</strong></td><td>${p.PERS_VIV ? p.PERS_VIV.toFixed(2) : 0}</td></tr>
-                                    <tr><td><strong>Categoría:</strong></td><td>${p.CAT_DENS || 'Sin datos'}</td></tr>
-                                    <tr><td><strong>Área:</strong></td><td>${areaKm2.toFixed(2)} km² (${areaM2.toFixed(0)} m²)</td></tr>
-                                </table>
-                            </div>
-                        `;
+                    var p = feature.properties;
+                    var areaM2 = p.AREA || 0;
+                    var areaKm2 = areaM2 / 1000000;
+
+                    var popupContent = '<div style="font-family:\'Segoe UI\',sans-serif;min-width:170px;max-width:240px;font-size:11px;">' +
+                        '<h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:12px;">' + (p.PROVINCIA || 'N/D') + ' – ' + (p
+                            .DISTRITO || 'N/D') + '</h4>' +
+                        (p.BARR_NOMB ? '<div style="font-size:10px;color:#666;margin-bottom:2px;">📍 ' + p.BARR_NOMB +
+                            '</div>' : '') +
+                        '<hr style="margin:3px 0;border:0;border-top:1px solid #ddd;">' +
+                        '<table style="width:100%;font-size:10px;line-height:1.4;">' +
+                        '<tr><td><strong>Viviendas:</strong></td><td>' + (p.VIVIENDA || 0) + '</td></tr>' +
+                        '<tr><td><strong>Personas:</strong></td><td>' + (p.V_PERSONAS || 0) + '</td></tr>' +
+                        '<tr><td><strong>Ocupadas:</strong></td><td>' + (p.VIV_OCUP || 0) + '</td></tr>' +
+                        '<tr><td><strong>% Ocupación:</strong></td><td>' + (p.PORC_OCU ? p.PORC_OCU.toFixed(1) : 0) +
+                        '%</td></tr>' +
+                        '<tr><td><strong>Densidad:</strong></td><td>' + (p.DENS_POB ? p.DENS_POB.toFixed(1) : 0) +
+                        ' hab/km²</td></tr>' +
+                        '<tr><td><strong>Pers./viv. ocupada:</strong></td><td>' + (p.PERS_VIV ? p.PERS_VIV.toFixed(2) :
+                            0) + '</td></tr>' +
+                        '<tr><td><strong>Categoría:</strong></td><td>' + (p.CAT_DENS || 'Sin datos') + '</td></tr>' +
+                        '<tr><td><strong>Área:</strong></td><td>' + areaKm2.toFixed(2) + ' km² (' + areaM2.toFixed(0) +
+                        ' m²)</td></tr>' +
+                        '</table></div>';
                     layer.bindPopup(popupContent);
-        
+
                     layer.on('mouseover', function() {
                         this.setStyle({ weight: 2.5, color: '#000000', fillOpacity: 0.95 });
                         this.bringToFront();
                     });
                     layer.on('mouseout', function() {
-                        const val = this.feature.properties[variable];
-                        let color = '#b0b0b0';
+                        var val = this.feature.properties[variable];
+                        var color = '#b0b0b0';
                         if (variable === 'CAT_DENS') {
                             color = catColors[val] || '#b0b0b0';
                         } else {
-                            const n = parseFloat(val);
+                            var n = parseFloat(val);
                             if (!isNaN(n) && n !== null) {
-                                const r = rangosFijos[variable];
-                                const min = r ? r.min : 0;
-                                const max = r ? r.max : 1;
+                                var r = rangosFijos[variable];
+                                var min = r ? r.min : 0;
+                                var max = r ? r.max : 1;
                                 color = getColorByValue(variable, n, min, max);
                             }
                         }
@@ -1095,214 +1235,60 @@
                     });
                 }
             }).addTo(map);
-        
-            // Actualizar leyenda y etiquetas
+
             updateLegend(variable, geoJsonFiltrado);
-        
-            const label = document.querySelector(`#variable-select option[value="${variable}"]`)?.textContent || variable;
+
+            var label = document.querySelector('#variable-select option[value="' + variable + '"]')?.textContent || variable;
             document.getElementById('info-label').textContent = label;
-            document.getElementById('info-value').textContent = `Mostrando ${featuresFiltradas.length} polígonos`;
-        }
-        // ================================================================
-        // 9. CONSTRUIR FILTROS
-        // ================================================================
-        function construirFiltros(variable) {
-            const container = document.getElementById('filtros-container');
-            let html = '';
-            let items = [];
-            let nombres = [];
-        
-            if (variable === 'CAT_DENS') {
-                items = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
-                nombres = items.map(c => catLabels[c]);
-                html = `<h4>🔍 Filtrar por categoría:</h4>`;
-                html += `<div class="select-all-container">
-                            <button onclick="toggleAllFiltros(true)">✅ Todo</button>
-                            <button onclick="toggleAllFiltros(false)">❌ Nada</button>
-                        </div>`;
-                for (let i = 0; i < items.length; i++) {
-                    const key = items[i];
-                    const checked = filtrosActivos[key] !== false;
-                    html += `
-                            <label class="filtro-checkbox">
-                                <input type="checkbox" value="${key}" ${checked ? 'checked' : ''} />
-                                <span class="color-muestra" style="background:${catColors[key]};"></span>
-                                <span>${nombres[i]}</span>
-                                <span class="count-badge" id="count-${key}">0</span>
-                            </label>
-                        `;
-                }
-            } else {
-                // Variables numéricas con rangos fijos
-                let stepCount = 5;
-                let nombresRango = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
-        
-                if (variable === 'DENS_POB') {
-                    stepCount = 6;
-                    nombresRango = [
-                        'Muy baja (<100)',
-                        'Baja (100-500)',
-                        'Media-Baja (500-2000)',
-                        'Media (2000-5000)',
-                        'Alta (5000-10000)',
-                        'Muy alta (>10000)'
-                    ];
-                } else if (rangosFijos[variable]) {
-                    const r = rangosFijos[variable];
-                    stepCount = r.steps;
-                    nombresRango = r.nombres;
-                }
-        
-                html = `<h4>🔍 Filtrar por rango:</h4>`;
-                html += `<div class="select-all-container">
-                            <button onclick="toggleAllFiltros(true)">✅ Todo</button>
-                            <button onclick="toggleAllFiltros(false)">❌ Nada</button>
-                        </div>`;
-                for (let i = 0; i < stepCount; i++) {
-                    // Usar concatenación en lugar de template string para evitar problemas
-                    const key = 'rango_' + i;
-                    const checked = filtrosActivos[key] !== false;
-                    // Calcular color para la muestra
-                    let color;
-                    if (variable === 'DENS_POB') {
-                        const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
-                        const minVal = limites[i];
-                        const maxVal = limites[i + 1];
-                        const valorMedio = (minVal + maxVal) / 2;
-                        color = getColorByValue(variable, valorMedio, 0, 20000);
-                    } else if (rangosFijos[variable]) {
-                        const r = rangosFijos[variable];
-                        const minVal = r.min + (r.max - r.min) * (i / stepCount);
-                        const maxVal = r.min + (r.max - r.min) * ((i + 1) / stepCount);
-                        const valorMedio = (minVal + maxVal) / 2;
-                        color = getColorByValue(variable, valorMedio, r.min, r.max);
-                    } else {
-                        color = getColorByValue(variable, i / stepCount, 0, 1);
-                    }
-                    html += `
-                            <label class="filtro-checkbox">
-                                <input type="checkbox" value="${key}" ${checked ? 'checked' : ''} />
-                                <span class="color-muestra" style="background:${color};"></span>
-                                <span>${nombresRango[i]}</span>
-                                <span class="count-badge" id="count-${key}">0</span>
-                            </label>
-                        `;
-                }
-            }
-        
-            html += `<button class="btn-reset" onclick="resetFiltros()">🔄 Restablecer filtros</button>`;
-            container.innerHTML = html;
-        
-            // Asignar eventos a los checkboxes
-            document.querySelectorAll('.filtro-checkbox input[type="checkbox"]').forEach(cb => {
-                cb.addEventListener('change', function() {
-                    filtrosActivos[this.value] = this.checked;
-                    updateMapWithFilters();
-                    actualizarContadores();
-                });
-            });
-        
-            actualizarContadores();
+            document.getElementById('info-value').textContent = 'Mostrando ' + featuresFiltradas.length + ' polígonos';
         }
 
         // ================================================================
-        // 10. CONTADORES
-        // ================================================================
-        function actualizarContadores() {
-            const variable = currentVariable;
-            if (variable === 'CAT_DENS') {
-                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
-                for (const cat of categories) {
-                    const count = allFeatures.filter(f => (f.properties['CAT_DENS'] || 'SIN_DATOS') === cat).length;
-                    const el = document.getElementById(`count-${cat}`);
-                    if (el) el.textContent = count;
-                }
-            } else {
-                let stepCount = 5;
-                if (variable === 'DENS_POB') stepCount = 6;
-                else if (rangosFijos[variable]) stepCount = rangosFijos[variable].steps;
-        
-                for (let i = 0; i < stepCount; i++) {
-                    const key = 'rango_' + i;
-                    let count = 0;
-        
-                    if (variable === 'DENS_POB') {
-                        const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
-                        count = allFeatures.filter(f => {
-                            const val = parseFloat(f.properties[variable]);
-                            if (isNaN(val) || val === null) return false;
-                            return val >= limites[i] && val < limites[i + 1];
-                        }).length;
-                    } else if (rangosFijos[variable]) {
-                        const r = rangosFijos[variable];
-                        const minVal = r.min + (r.max - r.min) * (i / stepCount);
-                        const maxVal = r.min + (r.max - r.min) * ((i + 1) / stepCount);
-                        count = allFeatures.filter(f => {
-                            const val = parseFloat(f.properties[variable]);
-                            if (isNaN(val) || val === null) return false;
-                            return val >= minVal && val < maxVal;
-                        }).length;
-                    }
-        
-                    const el = document.getElementById(`count-${key}`);
-                    if (el) el.textContent = count;
-                }
-            }
-        }
-
-        // ================================================================
-        // 11. TOGGLE ALL Y RESET
+        // 9. TOGGLE ALL Y RESET
         // ================================================================
         function toggleAllFiltros(estado) {
-            const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
-            checkboxes.forEach(cb => {
-                cb.checked = estado;
-                filtrosActivos[cb.value] = estado;
-            });
+            var checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
+            for (var i = 0; i < checkboxes.length; i++) {
+                checkboxes[i].checked = estado;
+                filtrosActivos[checkboxes[i].value] = estado;
+            }
             updateMapWithFilters();
         }
-        
+
         function resetFiltros() {
-            // Activar todos los checkboxes
-            const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
-            checkboxes.forEach(cb => {
-                cb.checked = true;
-                filtrosActivos[cb.value] = true;
-            });
-            
-            // Limpiar búsqueda
+            var checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
+            for (var i = 0; i < checkboxes.length; i++) {
+                checkboxes[i].checked = true;
+                filtrosActivos[checkboxes[i].value] = true;
+            }
             document.getElementById('searchInput').value = '';
-            
-            // Restaurar vista completa
             if (geoJsonData) {
-                const bounds = L.geoJSON(geoJsonData).getBounds();
+                var bounds = L.geoJSON(geoJsonData).getBounds();
                 if (bounds.isValid()) {
                     map.fitBounds(bounds, { padding: [20, 20] });
                 }
             }
-            
             updateMapWithFilters();
         }
 
         // ================================================================
-        // 12. LEYENDA
+        // 10. LEYENDA
         // ================================================================
         function updateLegend(variable, data) {
-            const legendDiv = document.getElementById('legend');
-            let html = `<div class="legend-title">Leyenda</div>`;
+            var legendDiv = document.getElementById('legend');
+            var html = '<div class="legend-title">Leyenda</div>';
 
             if (variable === 'CAT_DENS') {
-                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
-                for (const cat of categories) {
-                    html += `
-                            <div class="legend-item">
-                                <div class="legend-color" style="background:${catColors[cat]};"></div>
-                                <span class="legend-text">${catLabels[cat]}</span>
-                            </div>
-                        `;
+                var categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                for (var i = 0; i < categories.length; i++) {
+                    var cat = categories[i];
+                    html += '<div class="legend-item">' +
+                        '<div class="legend-color" style="background:' + catColors[cat] + ';"></div>' +
+                        '<span class="legend-text">' + catLabels[cat] + '</span>' +
+                        '</div>';
                 }
             } else if (variable === 'DENS_POB') {
-                const rangos = [
+                var rangos = [
                     { min: 0, max: 100, label: 'Muy baja (<100)' },
                     { min: 100, max: 500, label: 'Baja (100-500)' },
                     { min: 500, max: 2000, label: 'Media-Baja (500-2000)' },
@@ -1310,163 +1296,155 @@
                     { min: 5000, max: 10000, label: 'Alta (5000-10000)' },
                     { min: 10000, max: 20000, label: 'Muy alta (>10000)' }
                 ];
-
-                for (const r of rangos) {
-                    const valorMedio = (r.min + r.max) / 2;
-                    const color = getColorByValue('DENS_POB', valorMedio, 0, 20000);
-                    html += `
-                            <div class="legend-item">
-                                <div class="legend-color" style="background:${color};"></div>
-                                <span class="legend-text">${r.label}</span>
-                            </div>
-                        `;
+                for (var i2 = 0; i2 < rangos.length; i2++) {
+                    var r = rangos[i2];
+                    var valorMedio = (r.min + r.max) / 2;
+                    var color = getColorByValue('DENS_POB', valorMedio, 0, 20000);
+                    html += '<div class="legend-item">' +
+                        '<div class="legend-color" style="background:' + color + ';"></div>' +
+                        '<span class="legend-text">' + r.label + '</span>' +
+                        '</div>';
                 }
             } else if (variable === 'VIV_OCUP') {
-                const rangos = [
+                var rangos2 = [
                     { min: 0, max: 1600, label: 'Muy bajo (0-1600)' },
                     { min: 1600, max: 3200, label: 'Bajo (1600-3200)' },
                     { min: 3200, max: 4800, label: 'Medio (3200-4800)' },
                     { min: 4800, max: 6400, label: 'Alto (4800-6400)' },
                     { min: 6400, max: 8000, label: 'Muy alto (6400-8000)' }
                 ];
-
-                for (const r of rangos) {
-                    const valorMedio = (r.min + r.max) / 2;
-                    const color = getColorByValue('VIV_OCUP', valorMedio, 0, 8000);
-                    html += `
-                            <div class="legend-item">
-                                <div class="legend-color" style="background:${color};"></div>
-                                <span class="legend-text">${r.label}</span>
-                            </div>
-                        `;
+                for (var i3 = 0; i3 < rangos2.length; i3++) {
+                    var r2 = rangos2[i3];
+                    var valorMedio2 = (r2.min + r2.max) / 2;
+                    var color2 = getColorByValue('VIV_OCUP', valorMedio2, 0, 8000);
+                    html += '<div class="legend-item">' +
+                        '<div class="legend-color" style="background:' + color2 + ';"></div>' +
+                        '<span class="legend-text">' + r2.label + '</span>' +
+                        '</div>';
                 }
             } else if (variable === 'PORC_OCU') {
-                const rangos = [
+                var rangos3 = [
                     { min: 0, max: 20, label: 'Muy bajo (0-20%)' },
                     { min: 20, max: 40, label: 'Bajo (20-40%)' },
                     { min: 40, max: 60, label: 'Medio (40-60%)' },
                     { min: 60, max: 80, label: 'Alto (60-80%)' },
                     { min: 80, max: 100, label: 'Muy alto (80-100%)' }
                 ];
-
-                for (const r of rangos) {
-                    const valorMedio = (r.min + r.max) / 2;
-                    const color = getColorByValue('PORC_OCU', valorMedio, 0, 100);
-                    html += `
-                            <div class="legend-item">
-                                <div class="legend-color" style="background:${color};"></div>
-                                <span class="legend-text">${r.label}</span>
-                            </div>
-                        `;
+                for (var i4 = 0; i4 < rangos3.length; i4++) {
+                    var r3 = rangos3[i4];
+                    var valorMedio3 = (r3.min + r3.max) / 2;
+                    var color3 = getColorByValue('PORC_OCU', valorMedio3, 0, 100);
+                    html += '<div class="legend-item">' +
+                        '<div class="legend-color" style="background:' + color3 + ';"></div>' +
+                        '<span class="legend-text">' + r3.label + '</span>' +
+                        '</div>';
                 }
             } else if (variable === 'PERS_VIV') {
-                const rangos = [
+                var rangos4 = [
                     { min: 0, max: 1.2, label: 'Muy bajo (0.0-1.2)' },
                     { min: 1.2, max: 2.4, label: 'Bajo (1.2-2.4)' },
                     { min: 2.4, max: 3.6, label: 'Medio (2.4-3.6)' },
                     { min: 3.6, max: 4.8, label: 'Alto (3.6-4.8)' },
                     { min: 4.8, max: 6.0, label: 'Muy alto (4.8-6.0)' }
                 ];
-
-                for (const r of rangos) {
-                    const valorMedio = (r.min + r.max) / 2;
-                    const color = getColorByValue('PERS_VIV', valorMedio, 0, 6);
-                    html += `
-                            <div class="legend-item">
-                                <div class="legend-color" style="background:${color};"></div>
-                                <span class="legend-text">${r.label}</span>
-                            </div>
-                        `;
+                for (var i5 = 0; i5 < rangos4.length; i5++) {
+                    var r4 = rangos4[i5];
+                    var valorMedio4 = (r4.min + r4.max) / 2;
+                    var color4 = getColorByValue('PERS_VIV', valorMedio4, 0, 6);
+                    html += '<div class="legend-item">' +
+                        '<div class="legend-color" style="background:' + color4 + ';"></div>' +
+                        '<span class="legend-text">' + r4.label + '</span>' +
+                        '</div>';
                 }
             } else {
-                let stepCount = 5;
-                let nombres = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
-                let minVal = 0,
+                var stepCount = 5;
+                var nombres = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+                var minVal = 0,
                     maxVal = 1;
-
                 if (rangosFijos[variable]) {
-                    const r = rangosFijos[variable];
-                    stepCount = r.steps;
-                    nombres = r.nombres;
-                    minVal = r.min;
-                    maxVal = r.max;
+                    var r5 = rangosFijos[variable];
+                    stepCount = r5.steps;
+                    nombres = r5.nombres;
+                    minVal = r5.min;
+                    maxVal = r5.max;
                 }
-
-                for (let i = 0; i < stepCount; i++) {
-                    const low = minVal + (maxVal - minVal) * (i / stepCount);
-                    const high = minVal + (maxVal - minVal) * ((i + 1) / stepCount);
-                    const valorMedio = (low + high) / 2;
-                    const color = getColorByValue(variable, valorMedio, minVal, maxVal);
-                    html += `
-                            <div class="legend-item">
-                                <div class="legend-color" style="background:${color};"></div>
-                                <span class="legend-text">${nombres[i]}</span>
-                            </div>
-                        `;
+                for (var i6 = 0; i6 < stepCount; i6++) {
+                    var low = minVal + (maxVal - minVal) * (i6 / stepCount);
+                    var high = minVal + (maxVal - minVal) * ((i6 + 1) / stepCount);
+                    var valorMedio5 = (low + high) / 2;
+                    var color5 = getColorByValue(variable, valorMedio5, minVal, maxVal);
+                    html += '<div class="legend-item">' +
+                        '<div class="legend-color" style="background:' + color5 + ';"></div>' +
+                        '<span class="legend-text">' + nombres[i6] + '</span>' +
+                        '</div>';
                 }
             }
 
-            const desc = descripcionIndicador[variable] || '';
+            var desc = descripcionIndicador[variable] || '';
             if (desc) {
-                html += `<div class="legend-desc">💡 ${desc}</div>';
+                html += '<div class="legend-desc">💡 ' + desc + '</div>';
             }
 
             legendDiv.innerHTML = html;
         }
 
         // ================================================================
-        // 13. CARGA DEL GEOJSON
+        // 11. CARGA DEL GEOJSON
         // ================================================================
         async function loadGeoJSON() {
             try {
-                const response = await fetch('vivienda_2023.geojson');
+                var response = await fetch('vivienda_2023.geojson');
                 if (!response.ok) throw new Error('HTTP ' + response.status);
-                const data = await response.json();
+                var data = await response.json();
                 geoJsonData = data;
                 allFeatures = data.features;
                 console.log('✅ GeoJSON cargado:', allFeatures.length, 'features');
 
-                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
-                for (const cat of categories) filtrosActivos[cat] = true;
-                for (let i = 0; i < 6; i++) filtrosActivos[`rango_${i}`] = true;
+                var categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                for (var i = 0; i < categories.length; i++) {
+                    filtrosActivos[categories[i]] = true;
+                }
+                for (var j = 0; j < 6; j++) {
+                    filtrosActivos['rango_' + j] = true;
+                }
 
-                const variable = document.getElementById('variable-select').value;
+                var variable = document.getElementById('variable-select').value;
                 currentVariable = variable;
                 construirFiltros(variable);
                 updateMapWithFilters();
 
-                const bounds = L.geoJSON(data).getBounds();
+                var bounds = L.geoJSON(data).getBounds();
                 if (bounds.isValid()) {
                     map.fitBounds(bounds, { padding: [20, 20] });
                 }
             } catch (error) {
                 console.error('❌ Error:', error);
-                document.getElementById('info-box').innerHTML = `
-                        <div style="color:#b94a4a;font-weight:bold;">⚠️ Error al cargar los datos</div>
-                        <div style="font-size:10px;margin-top:2px;">${error.message}</div>
-                        <div style="font-size:10px;margin-top:2px;">Asegúrate de que <strong>vivienda_2023.geojson</strong> esté en la misma carpeta.</div>
-                    `;
+                document.getElementById('info-box').innerHTML =
+                    '<div style="color:#b94a4a;font-weight:bold;">⚠️ Error al cargar los datos</div>' +
+                    '<div style="font-size:10px;margin-top:2px;">' + error.message + '</div>' +
+                    '<div style="font-size:10px;margin-top:2px;">Asegúrate de que <strong>vivienda_2023.geojson</strong> esté en la misma carpeta.</div>';
             }
         }
 
         // ================================================================
-        // 14. EVENTOS
+        // 12. EVENTOS
         // ================================================================
         document.getElementById('variable-select').addEventListener('change', function(e) {
             if (geoJsonData) {
                 currentVariable = e.target.value;
                 if (currentVariable === 'CAT_DENS') {
-                    const cats = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
-                    for (const c of cats) if (filtrosActivos[c] === undefined) filtrosActivos[c] = true;
+                    var cats = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                    for (var i = 0; i < cats.length; i++) {
+                        if (filtrosActivos[cats[i]] === undefined) filtrosActivos[cats[i]] = true;
+                    }
                 } else {
-                    let stepCount = 5;
+                    var stepCount = 5;
                     if (currentVariable === 'DENS_POB') stepCount = 6;
                     else if (rangosFijos[currentVariable]) stepCount = rangosFijos[currentVariable].steps;
-                    for (let i = 0; i < stepCount; i++) {
-                        if (filtrosActivos[`rango_${i}`] === undefined) filtrosActivos[`rango_${i}`] = true;
+                    for (var j = 0; j < stepCount; j++) {
+                        if (filtrosActivos['rango_' + j] === undefined) filtrosActivos['rango_' + j] = true;
                     }
                 }
-                // Limpiar búsqueda al cambiar indicador
                 document.getElementById('searchInput').value = '';
                 construirFiltros(currentVariable);
                 updateMapWithFilters();
@@ -1474,7 +1452,7 @@
         });
 
         document.getElementById('map-select').addEventListener('change', function(e) {
-            const value = e.target.value;
+            var value = e.target.value;
             map.removeLayer(satelliteLayer);
             map.removeLayer(osmLayer);
             map.removeLayer(topoLayer);
@@ -1483,9 +1461,12 @@
             else if (value === 'topo') topoLayer.addTo(map);
         });
 
-        // Enter en el buscador
         document.getElementById('searchInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') buscarPoligonos();
+        });
+
+        document.getElementById('statsModal').addEventListener('click', function(e) {
+            if (e.target === this) closeStats();
         });
 
         window.toggleAllFiltros = toggleAllFiltros;
@@ -1496,7 +1477,7 @@
         window.closeStats = closeStats;
 
         // ================================================================
-        // 15. INICIO
+        // 13. INICIO
         // ================================================================
         loadGeoJSON();
         console.log('🗺️ Mapa interactivo iniciado – RAUL VIQUEZ');
