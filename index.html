@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <!-- Chart.js para gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js">
+    <script src="https://leaflet.github.io/Leaflet.heat/dist/leaflet-heat.js">
     </script>
     <style>
         * {
@@ -123,6 +124,18 @@
         }
         .btn-export:hover {
             background: #1e6b47;
+        }
+
+        .btn-heat {
+            background: #ffe4e6;
+            color: #9f1239;
+            border: 1px solid #fecdd3;
+        }
+        .btn-heat.active {
+            background: #f43f5e;
+            color: white;
+            border-color: #e11d48;
+            box-shadow: 0 0 6px rgba(244, 63, 94, 0.4);
         }
         .btn-stats {
             background: #2c6b9e;
@@ -473,6 +486,7 @@
         <div class="action-buttons">
             <button class="btn-stats" onclick="mostrarEstadisticas()">📊 Estadísticas</button>
             <button class="btn-export" onclick="exportarCSV()">💾 Exportar CSV</button>
+            <button class="btn-heat" onclick="toggleHeatmap()">🔥 Calor</button>
         </div>
 
         <div id="filtros-container" class="filtros-container">
@@ -527,6 +541,8 @@
         let filtrosActivos = {};
         let chartInstance = null;
         let currentFeaturesFiltradas = [];
+        let heatLayerInstance = null;
+        let mostrarHeatmapActivo = false;
 
         // ================================================================
         // 3. PALETAS DE COLORES
@@ -813,6 +829,104 @@
             URL.revokeObjectURL(link.href);
         }
 
+
+        function toggleHeatmap() {
+            mostrarHeatmapActivo = !mostrarHeatmapActivo;
+            const btn = document.querySelector('.btn-heat');
+            
+            if (mostrarHeatmapActivo) {
+                btn.textContent = '🔥 Ocultar Calor';
+                btn.classList.add('active');
+                generarHeatmap();
+            } else {
+                btn.textContent = '🔥 Calor';
+                btn.classList.remove('active');
+                if (heatLayerInstance) {
+                    map.removeLayer(heatLayerInstance);
+                    heatLayerInstance = null;
+                }
+                // Restaurar capas
+                if (currentLayer) map.addLayer(currentLayer);
+                if (bufferLayer) map.addLayer(bufferLayer);
+                if (colegiosLayer) map.addLayer(colegiosLayer);
+                if (markersLayer) map.addLayer(markersLayer);
+            }
+        }
+        function generarHeatmap() {
+            // Ocultar capas de polígonos y marcadores
+            if (currentLayer) map.removeLayer(currentLayer);
+            if (bufferLayer) map.removeLayer(bufferLayer);
+            if (colegiosLayer) map.removeLayer(colegiosLayer);
+            if (markersLayer) map.removeLayer(markersLayer);
+            
+            // Obtener datos
+            const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
+            const variable = currentVariable;
+            
+            if (features.length === 0) {
+                alert('No hay datos para generar el mapa de calor');
+                toggleHeatmap();
+                return;
+            }
+            
+            // Preparar puntos [lat, lon, intensidad]
+            const puntos = [];
+            const valores = features.map(f => parseFloat(f.properties[variable]) || 0);
+            const maxValor = Math.max(...valores);
+            const minValor = Math.min(...valores);
+            const rango = maxValor - minValor || 1;
+            
+            for (const f of features) {
+                const geom = f.geometry;
+                if (geom && geom.type === 'Polygon' && geom.coordinates.length > 0) {
+                    // Calcular centroide
+                    const coords = geom.coordinates[0];
+                    let lat = 0, lng = 0;
+                    for (const c of coords) {
+                        lat += c[1];
+                        lng += c[0];
+                    }
+                    lat /= coords.length;
+                    lng /= coords.length;
+                    
+                    const valor = parseFloat(f.properties[variable]) || 0;
+                    const intensidad = (valor - minValor) / rango;
+                    
+                    puntos.push([lat, lng, intensidad * 0.8 + 0.2]); // Normalizar entre 0.2 y 1.0
+                }
+            }
+            
+            if (puntos.length === 0) {
+                alert('No se pudieron generar puntos para el heatmap');
+                toggleHeatmap();
+                return;
+            }
+            
+            // Crear heatmap
+            if (heatLayerInstance) {
+                map.removeLayer(heatLayerInstance);
+            }
+            
+            heatLayerInstance = L.heatLayer(puntos, {
+                radius: 25,        // Radio de cada punto de calor
+                blur: 20,          // Difuminado
+                maxZoom: 13,       // Zoom máximo donde se ve el heatmap
+                gradient: {        // Paleta de colores
+                    0.0: 'blue',
+                    0.2: 'cyan',
+                    0.4: 'lime',
+                    0.6: 'yellow',
+                    0.8: 'orange',
+                    1.0: 'red'
+                }
+            }).addTo(map);
+            
+            // Ajustar zoom
+            const bounds = L.latLngBounds(puntos.map(p => [p[0], p[1]]));
+            if (bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
         // ================================================================
         // 6. ESTADÍSTICAS (Gráfico)
         // ================================================================
@@ -1236,11 +1350,17 @@
                 }
             }).addTo(map);
 
+            
+            
             updateLegend(variable, geoJsonFiltrado);
 
             var label = document.querySelector('#variable-select option[value="' + variable + '"]')?.textContent || variable;
             document.getElementById('info-label').textContent = label;
             document.getElementById('info-value').textContent = 'Mostrando ' + featuresFiltradas.length + ' polígonos';
+            if (mostrarHeatmapActivo) {
+                    generarHeatmap();
+                }
+        
         }
 
         // ================================================================
@@ -1269,6 +1389,10 @@
                 }
             }
             updateMapWithFilters();
+            
+            if (mostrarHeatmapActivo) {
+                toggleHeatmap();
+            }
         }
 
         // ================================================================
