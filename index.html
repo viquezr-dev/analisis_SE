@@ -11,45 +11,44 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; }
         #map { height: 100vh; width: 100%; }
 
-        /* Panel de control - Más compacto */
         .control-panel {
             position: absolute;
             top: 10px;
             right: 10px;
             z-index: 1000;
             background: rgba(255, 255, 255, 0.95);
-            padding: 12px 14px;
+            padding: 10px 12px;
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            max-width: 260px;
+            max-width: 250px;
             backdrop-filter: blur(4px);
             border: 1px solid rgba(255,255,255,0.3);
             max-height: 95vh;
             overflow-y: auto;
-            font-size: 12px;
+            font-size: 11px;
         }
         .control-panel h3 {
-            font-size: 14px;
+            font-size: 13px;
             color: #1a2a3a;
             border-bottom: 2px solid #d94f4f;
             padding-bottom: 4px;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         .control-panel label {
             font-weight: 600;
-            font-size: 11px;
+            font-size: 10px;
             color: #2c3e50;
             display: block;
-            margin-top: 6px;
+            margin-top: 5px;
             margin-bottom: 2px;
         }
         .control-panel select {
             width: 100%;
-            padding: 4px 8px;
-            border-radius: 6px;
+            padding: 3px 6px;
+            border-radius: 5px;
             border: 1px solid #ccc;
             background: white;
-            font-size: 11px;
+            font-size: 10px;
             cursor: pointer;
         }
         .control-panel select:focus {
@@ -58,53 +57,52 @@
             box-shadow: 0 0 0 2px rgba(217,79,79,0.2);
         }
 
-        /* Filtros - Más compacto */
         .filtros-container {
-            margin-top: 6px;
-            padding: 6px 8px;
+            margin-top: 5px;
+            padding: 5px 7px;
             background: #f8f9fa;
-            border-radius: 6px;
+            border-radius: 5px;
             border-left: 3px solid #d94f4f;
-            max-height: 180px;
+            max-height: 160px;
             overflow-y: auto;
         }
         .filtros-container h4 {
-            font-size: 11px;
+            font-size: 10px;
             color: #1a2a3a;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
         .filtro-checkbox {
             display: flex;
             align-items: center;
             margin: 2px 0;
-            font-size: 11px;
+            font-size: 10px;
             color: #2c3e50;
             cursor: pointer;
-            padding: 2px 4px;
+            padding: 1px 4px;
             border-radius: 3px;
         }
         .filtro-checkbox:hover { background: #e9ecef; }
         .filtro-checkbox input[type="checkbox"] {
-            margin-right: 6px;
-            width: 13px;
-            height: 13px;
+            margin-right: 5px;
+            width: 12px;
+            height: 12px;
             accent-color: #d94f4f;
             flex-shrink: 0;
         }
         .filtro-checkbox .color-muestra {
-            width: 16px;
-            height: 12px;
-            border-radius: 3px;
-            margin-right: 6px;
+            width: 14px;
+            height: 10px;
+            border-radius: 2px;
+            margin-right: 5px;
             border: 1px solid rgba(0,0,0,0.1);
             flex-shrink: 0;
         }
         .filtro-checkbox .count-badge {
             margin-left: auto;
-            font-size: 9px;
+            font-size: 8px;
             background: #e9ecef;
-            padding: 0 6px;
-            border-radius: 10px;
+            padding: 0 5px;
+            border-radius: 8px;
             color: #555;
         }
 
@@ -112,11 +110,11 @@
             background: #d94f4f;
             color: white;
             border: none;
-            padding: 3px 10px;
+            padding: 2px 8px;
             border-radius: 4px;
-            font-size: 10px;
+            font-size: 9px;
             cursor: pointer;
-            margin-top: 4px;
+            margin-top: 3px;
             width: 100%;
             font-weight: 600;
         }
@@ -125,11 +123,11 @@
         .select-all-container {
             display: flex;
             gap: 4px;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
         .select-all-container button {
-            font-size: 10px;
-            padding: 1px 8px;
+            font-size: 9px;
+            padding: 1px 6px;
             border: 1px solid #ccc;
             border-radius: 3px;
             background: white;
@@ -138,19 +136,19 @@
         .select-all-container button:hover { background: #e9ecef; }
 
         .info-box {
-            margin-top: 6px;
-            font-size: 11px;
+            margin-top: 5px;
+            font-size: 10px;
             color: #34495e;
             background: #f8f9fa;
-            padding: 6px 8px;
-            border-radius: 6px;
+            padding: 5px 7px;
+            border-radius: 5px;
             border-left: 3px solid #d94f4f;
             line-height: 1.4;
         }
         .info-box strong { color: #1a2a3a; }
         .info-box .valor { font-weight: 700; color: #d94f4f; }
         .info-box .stats {
-            font-size: 10px;
+            font-size: 9px;
             color: #666;
             margin-top: 2px;
             border-top: 1px dashed #ddd;
@@ -159,17 +157,17 @@
         .info-box .stats span { font-weight: 700; color: #1a2a3a; }
 
         .legend {
-            margin-top: 6px;
-            padding: 6px 8px;
+            margin-top: 5px;
+            padding: 5px 7px;
             background: #f8f9fa;
-            border-radius: 6px;
-            font-size: 10px;
+            border-radius: 5px;
+            font-size: 9px;
         }
         .legend-title {
             font-weight: 600;
             color: #2c3e50;
             margin-bottom: 3px;
-            font-size: 11px;
+            font-size: 10px;
         }
         .legend-item {
             display: flex;
@@ -177,20 +175,20 @@
             margin: 2px 0;
         }
         .legend-color {
-            width: 16px;
-            height: 12px;
-            border-radius: 3px;
-            margin-right: 6px;
+            width: 14px;
+            height: 10px;
+            border-radius: 2px;
+            margin-right: 5px;
             border: 1px solid rgba(0,0,0,0.1);
             flex-shrink: 0;
         }
-        .legend-text { font-size: 10px; color: #2c3e50; }
+        .legend-text { font-size: 9px; color: #2c3e50; }
 
         .legend-desc {
-            font-size: 9px;
+            font-size: 8px;
             color: #888;
-            margin-top: 4px;
-            padding-top: 4px;
+            margin-top: 3px;
+            padding-top: 3px;
             border-top: 1px dashed #ddd;
             font-style: italic;
         }
@@ -203,9 +201,9 @@
             z-index: 1000;
             background: rgba(0,0,0,0.7);
             color: white;
-            padding: 4px 14px;
-            border-radius: 16px;
-            font-size: 10px;
+            padding: 3px 12px;
+            border-radius: 14px;
+            font-size: 9px;
             backdrop-filter: blur(2px);
             pointer-events: none;
             white-space: nowrap;
@@ -215,16 +213,16 @@
             .control-panel {
                 top: 6px;
                 right: 6px;
-                max-width: 200px;
-                padding: 8px 10px;
+                max-width: 190px;
+                padding: 6px 8px;
             }
-            .control-panel h3 { font-size: 12px; }
-            .control-panel select { font-size: 10px; padding: 3px 6px; }
-            .filtros-container { max-height: 140px; padding: 4px 6px; }
-            .filtro-checkbox { font-size: 10px; }
-            .legend { font-size: 9px; padding: 4px 6px; }
-            .info-box { font-size: 10px; padding: 4px 6px; }
-            .footer { font-size: 8px; padding: 2px 10px; }
+            .control-panel h3 { font-size: 11px; }
+            .control-panel select { font-size: 9px; padding: 2px 5px; }
+            .filtros-container { max-height: 120px; padding: 4px 5px; }
+            .filtro-checkbox { font-size: 9px; }
+            .legend { font-size: 8px; padding: 4px 5px; }
+            .info-box { font-size: 9px; padding: 4px 5px; }
+            .footer { font-size: 7px; padding: 2px 8px; }
         }
     </style>
 </head>
@@ -247,8 +245,8 @@
             <option value="CAT_DENS">🏷️ Categoría de densidad</option>
             <option value="DENS_POB">👥 Densidad poblacional</option>
             <option value="VIV_OCUP">🏠 Viviendas ocupadas</option>
-            <option value="PORC_OCU">📊 % Ocupación</option>
-            <option value="PERS_VIV" selected>👤 Pers./viv. ocupada</option>
+            <option value="PORC_OCU" selected>📊 % Ocupación</option>
+            <option value="PERS_VIV">👤 Pers./viv. ocupada</option>
         </select>
 
         <div id="filtros-container" class="filtros-container">
@@ -256,7 +254,7 @@
         </div>
 
         <div class="info-box" id="info-box">
-            <strong id="info-label">Pers./viv. ocupada</strong><br />
+            <strong id="info-label">% Ocupación</strong><br />
             <span id="info-value">Selecciona un polígono</span>
             <div class="stats" id="stats-info">Mostrando: <span id="count-mostrados">0</span> de <span id="count-total">0</span> polígonos</div>
         </div>
@@ -296,11 +294,9 @@
         // 2. VARIABLES GLOBALES
         // ================================================================
         let currentLayer = null;
-        let currentVariable = 'PERS_VIV';
+        let currentVariable = 'PORC_OCU';
         let geoJsonData = null;
         let allFeatures = [];
-        let minVal = 0,
-            maxVal = 1;
         let filtrosActivos = {};
 
         // ================================================================
@@ -330,24 +326,42 @@
             'PERS_VIV': ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486']
         };
 
-        // Rangos fijos para PERS_VIV (más realistas)
+        // ================================================================
+        // RANGOS FIJOS POR VARIABLE
+        // ================================================================
         const rangosFijos = {
             'PERS_VIV': {
                 min: 0,
                 max: 6,
-                nombres: ['Muy bajo (0.0 – 1.2)', 'Bajo (1.2 – 2.4)', 'Medio (2.4 – 3.6)', 'Alto (3.6 – 4.8)',
-                    'Muy alto (4.8 – 6.0)'
-                ]
+                steps: 5,
+                nombres: ['Muy bajo (0.0–1.2)', 'Bajo (1.2–2.4)', 'Medio (2.4–3.6)', 'Alto (3.6–4.8)', 'Muy alto (4.8–6.0)']
+            },
+            'PORC_OCU': {
+                min: 0,
+                max: 100,
+                steps: 5,
+                nombres: ['Muy bajo (0–20%)', 'Bajo (20–40%)', 'Medio (40–60%)', 'Alto (60–80%)', 'Muy alto (80–100%)']
+            },
+            'DENS_POB': {
+                min: 0,
+                max: 130000,
+                steps: 5,
+                nombres: ['Muy bajo (0–26k)', 'Bajo (26k–52k)', 'Medio (52k–78k)', 'Alto (78k–104k)', 'Muy alto (104k–130k)']
+            },
+            'VIV_OCUP': {
+                min: 0,
+                max: 8000,
+                steps: 5,
+                nombres: ['Muy bajo (0–1600)', 'Bajo (1600–3200)', 'Medio (3200–4800)', 'Alto (4800–6400)', 'Muy alto (6400–8000)']
             }
         };
 
+        // Nombres genéricos para variables sin rangos fijos
         const rangosNombres = {
             'DENS_POB': ['Muy baja', 'Baja', 'Media', 'Alta', 'Muy alta'],
             'VIV_OCUP': ['Muy pocas', 'Pocas', 'Medias', 'Muchas', 'Muchísimas'],
             'PORC_OCU': ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'],
-            'PERS_VIV': ['Muy bajo (0.0–1.2)', 'Bajo (1.2–2.4)', 'Medio (2.4–3.6)', 'Alto (3.6–4.8)',
-                'Muy alto (4.8–6.0)'
-            ]
+            'PERS_VIV': ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto']
         };
 
         // Descripciones para cada indicador
@@ -359,13 +373,17 @@
             'PERS_VIV': 'Promedio de personas por vivienda ocupada. Valores altos pueden indicar hacinamiento.'
         };
 
+        // ================================================================
+        // FUNCIÓN PARA OBTENER COLOR SEGÚN VARIABLE
+        // ================================================================
         function getColorByValue(variable, value, min, max) {
             if (isNaN(value) || value === null) return '#b0b0b0';
             const palette = numPalettes[variable] || numPalettes['DENS_POB'];
             let t;
-            if (variable === 'PERS_VIV') {
-                // Usar rango fijo 0-6
-                t = Math.min(value / 6, 1);
+            if (rangosFijos[variable]) {
+                const r = rangosFijos[variable];
+                t = (value - r.min) / (r.max - r.min);
+                t = Math.max(0, Math.min(1, t));
             } else {
                 t = (value - min) / (max - min + 0.0001);
             }
@@ -374,18 +392,42 @@
         }
 
         // ================================================================
+        // FUNCIÓN PARA OBTENER EL ÍNDICE DE RANGO
+        // ================================================================
+        function getRangoIndex(variable, value) {
+            if (isNaN(value) || value === null) return 0;
+            if (rangosFijos[variable]) {
+                const r = rangosFijos[variable];
+                const t = (value - r.min) / (r.max - r.min);
+                return Math.min(Math.floor(t * r.steps), r.steps - 1);
+            } else {
+                // Para variables sin rangos fijos (solo CAT_DENS que usa categorías)
+                return 0;
+            }
+        }
+
+        // ================================================================
+        // FUNCIÓN PARA OBTENER EL NOMBRE DEL RANGO
+        // ================================================================
+        function getRangoNombre(variable, index) {
+            if (rangosFijos[variable]) {
+                return rangosFijos[variable].nombres[index] || `Rango ${index+1}`;
+            }
+            return rangosNombres[variable]?.[index] || `Rango ${index+1}`;
+        }
+
+        // ================================================================
         // 4. FILTROS
         // ================================================================
-        function getFiltros(variable) {
+        function getFiltros() {
             const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
             const activos = {};
             checkboxes.forEach(cb => { activos[cb.value] = cb.checked; });
-            return { type: 'checkboxes', activos };
+            return activos;
         }
 
         function aplicarFiltros(features, variable) {
-            const filtros = getFiltros(variable);
-            const activos = filtros.activos;
+            const activos = getFiltros();
             const algunActivo = Object.values(activos).some(v => v === true);
             if (!algunActivo) return [];
 
@@ -393,20 +435,14 @@
                 let key;
                 if (variable === 'CAT_DENS') {
                     key = f.properties[variable] || 'SIN_DATOS';
+                    return activos[key] !== false;
                 } else {
                     const val = parseFloat(f.properties[variable]);
                     if (isNaN(val) || val === null) return false;
-                    let index;
-                    if (variable === 'PERS_VIV') {
-                        // Rango fijo 0-6
-                        index = Math.min(Math.floor(val / 1.2), 4);
-                    } else {
-                        const t = (val - minVal) / (maxVal - minVal + 0.0001);
-                        index = Math.min(Math.floor(t * 5), 4);
-                    }
+                    const index = getRangoIndex(variable, val);
                     key = `rango_${index}`;
+                    return activos[key] !== false;
                 }
-                return activos[key] !== false;
             });
         }
 
@@ -420,21 +456,6 @@
             if (currentLayer) {
                 map.removeLayer(currentLayer);
                 currentLayer = null;
-            }
-
-            // Calcular min/max para variables numéricas (excepto PERS_VIV que usa fijo)
-            if (variable !== 'CAT_DENS' && variable !== 'PERS_VIV') {
-                minVal = Infinity;
-                maxVal = -Infinity;
-                for (const f of allFeatures) {
-                    const v = parseFloat(f.properties[variable]);
-                    if (!isNaN(v) && v !== null) {
-                        if (v < minVal) minVal = v;
-                        if (v > maxVal) maxVal = v;
-                    }
-                }
-                if (minVal === Infinity) minVal = 0;
-                if (maxVal === -Infinity) maxVal = 1;
             }
 
             const featuresFiltradas = aplicarFiltros(allFeatures, variable);
@@ -456,7 +477,10 @@
                     } else {
                         const numVal = parseFloat(value);
                         if (!isNaN(numVal) && numVal !== null) {
-                            color = getColorByValue(variable, numVal, minVal, maxVal);
+                            const r = rangosFijos[variable];
+                            const min = r ? r.min : 0;
+                            const max = r ? r.max : 1;
+                            color = getColorByValue(variable, numVal, min, max);
                         }
                     }
                     return {
@@ -473,11 +497,11 @@
                     const areaKm2 = areaM2 / 1000000;
 
                     const popupContent = `
-                            <div style="font-family:'Segoe UI',sans-serif;min-width:180px;max-width:260px;font-size:12px;">
-                                <h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:13px;">${p.PROVINCIA || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
-                                ${p.BARR_NOMB ? `<div style="font-size:11px;color:#666;margin-bottom:2px;">📍 ${p.BARR_NOMB}</div>` : ''}
+                            <div style="font-family:'Segoe UI',sans-serif;min-width:170px;max-width:240px;font-size:11px;">
+                                <h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:12px;">${p.PROVINCIA || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
+                                ${p.BARR_NOMB ? `<div style="font-size:10px;color:#666;margin-bottom:2px;">📍 ${p.BARR_NOMB}</div>` : ''}
                                 <hr style="margin:3px 0;border:0;border-top:1px solid #ddd;">
-                                <table style="width:100%;font-size:11px;line-height:1.5;">
+                                <table style="width:100%;font-size:10px;line-height:1.4;">
                                     <tr><td><strong>Viviendas:</strong></td><td>${p.VIVIENDA || 0}</td></tr>
                                     <tr><td><strong>Personas:</strong></td><td>${p.V_PERSONAS || 0}</td></tr>
                                     <tr><td><strong>Ocupadas:</strong></td><td>${p.VIV_OCUP || 0}</td></tr>
@@ -502,7 +526,12 @@
                             color = catColors[val] || '#b0b0b0';
                         } else {
                             const n = parseFloat(val);
-                            if (!isNaN(n) && n !== null) color = getColorByValue(variable, n, minVal, maxVal);
+                            if (!isNaN(n) && n !== null) {
+                                const r = rangosFijos[variable];
+                                const min = r ? r.min : 0;
+                                const max = r ? r.max : 1;
+                                color = getColorByValue(variable, n, min, max);
+                            }
                         }
                         this.setStyle({
                             weight: 1,
@@ -528,46 +557,50 @@
             const container = document.getElementById('filtros-container');
             let html = '';
             let items = [];
+            let nombres = [];
 
             if (variable === 'CAT_DENS') {
                 items = ['MUY_BAJA', 'BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                nombres = items.map(c => catLabels[c]);
                 html = `<h4>🔍 Filtrar por categoría:</h4>`;
                 html += `<div class="select-all-container">
                             <button onclick="toggleAllFiltros(true)">✅ Todo</button>
                             <button onclick="toggleAllFiltros(false)">❌ Nada</button>
                         </div>`;
-                for (const key of items) {
+                for (let i = 0; i < items.length; i++) {
+                    const key = items[i];
                     const checked = filtrosActivos[key] !== false;
                     html += `
                             <label class="filtro-checkbox">
                                 <input type="checkbox" value="${key}" ${checked ? 'checked' : ''} />
                                 <span class="color-muestra" style="background:${catColors[key]};"></span>
-                                <span>${catLabels[key]}</span>
+                                <span>${nombres[i]}</span>
                                 <span class="count-badge" id="count-${key}">0</span>
                             </label>
                         `;
                 }
             } else {
-                const nombres = rangosNombres[variable] || ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+                // Variables numéricas con rangos fijos
+                const r = rangosFijos[variable];
+                const stepCount = r ? r.steps : 5;
+                const nombresRango = r ? r.nombres : ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+
                 html = `<h4>🔍 Filtrar por rango:</h4>`;
                 html += `<div class="select-all-container">
                             <button onclick="toggleAllFiltros(true)">✅ Todo</button>
                             <button onclick="toggleAllFiltros(false)">❌ Nada</button>
                         </div>`;
-                for (let i = 0; i < 5; i++) {
+                for (let i = 0; i < stepCount; i++) {
                     const key = `rango_${i}`;
                     const checked = filtrosActivos[key] !== false;
-                    let color;
-                    if (variable === 'PERS_VIV') {
-                        color = getColorByValue(variable, i * 1.2 + 0.6, 0, 6);
-                    } else {
-                        color = getColorByValue(variable, i / 4, 0, 1);
-                    }
+                    const minVal = r ? r.min + (r.max - r.min) * (i / stepCount) : i / stepCount;
+                    const maxVal = r ? r.min + (r.max - r.min) * ((i + 1) / stepCount) : (i + 1) / stepCount;
+                    const color = getColorByValue(variable, (minVal + maxVal) / 2, r ? r.min : 0, r ? r.max : 1);
                     html += `
                             <label class="filtro-checkbox">
                                 <input type="checkbox" value="${key}" ${checked ? 'checked' : ''} />
                                 <span class="color-muestra" style="background:${color};"></span>
-                                <span>${nombres[i]}</span>
+                                <span>${nombresRango[i]}</span>
                                 <span class="count-badge" id="count-${key}">0</span>
                             </label>
                         `;
@@ -601,26 +634,17 @@
                     if (el) el.textContent = count;
                 }
             } else {
-                for (let i = 0; i < 5; i++) {
+                const r = rangosFijos[variable];
+                const stepCount = r ? r.steps : 5;
+                for (let i = 0; i < stepCount; i++) {
                     const key = `rango_${i}`;
-                    let count = 0;
-                    if (variable === 'PERS_VIV') {
-                        const minR = i * 1.2;
-                        const maxR = (i + 1) * 1.2;
-                        count = allFeatures.filter(f => {
-                            const val = parseFloat(f.properties[variable]);
-                            if (isNaN(val) || val === null) return false;
-                            return val >= minR && val < maxR;
-                        }).length;
-                    } else {
-                        const minR = minVal + (maxVal - minVal) * (i / 5);
-                        const maxR = minVal + (maxVal - minVal) * ((i + 1) / 5);
-                        count = allFeatures.filter(f => {
-                            const val = parseFloat(f.properties[variable]);
-                            if (isNaN(val) || val === null) return false;
-                            return val >= minR && val < maxR;
-                        }).length;
-                    }
+                    const minVal = r ? r.min + (r.max - r.min) * (i / stepCount) : i / stepCount;
+                    const maxVal = r ? r.min + (r.max - r.min) * ((i + 1) / stepCount) : (i + 1) / stepCount;
+                    const count = allFeatures.filter(f => {
+                        const val = parseFloat(f.properties[variable]);
+                        if (isNaN(val) || val === null) return false;
+                        return val >= minVal && val < maxVal;
+                    }).length;
                     const el = document.getElementById(`count-${key}`);
                     if (el) el.textContent = count;
                 }
@@ -666,14 +690,13 @@
                         `;
                 }
             } else {
-                const nombres = rangosNombres[variable] || ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
-                for (let i = 0; i < 5; i++) {
-                    let color;
-                    if (variable === 'PERS_VIV') {
-                        color = getColorByValue(variable, i * 1.2 + 0.6, 0, 6);
-                    } else {
-                        color = getColorByValue(variable, i / 4, 0, 1);
-                    }
+                const r = rangosFijos[variable];
+                const stepCount = r ? r.steps : 5;
+                const nombres = r ? r.nombres : ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+                for (let i = 0; i < stepCount; i++) {
+                    const minVal = r ? r.min + (r.max - r.min) * (i / stepCount) : i / stepCount;
+                    const maxVal = r ? r.min + (r.max - r.min) * ((i + 1) / stepCount) : (i + 1) / stepCount;
+                    const color = getColorByValue(variable, (minVal + maxVal) / 2, r ? r.min : 0, r ? r.max : 1);
                     html += `
                             <div class="legend-item">
                                 <div class="legend-color" style="background:${color};"></div>
@@ -738,7 +761,9 @@
                     const cats = ['MUY_BAJA', 'BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                     for (const c of cats) if (filtrosActivos[c] === undefined) filtrosActivos[c] = true;
                 } else {
-                    for (let i = 0; i < 5; i++) {
+                    const r = rangosFijos[currentVariable];
+                    const stepCount = r ? r.steps : 5;
+                    for (let i = 0; i < stepCount; i++) {
                         if (filtrosActivos[`rango_${i}`] === undefined) filtrosActivos[`rango_${i}`] = true;
                     }
                 }
