@@ -6,11 +6,23 @@
     <title>Estudio Socioeconómico - Vivienda 2023</title>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Estilos personalizados -->
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; }
-        #map { height: 100vh; width: 100%; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
 
+        /* Panel de control */
         .control-panel {
             position: absolute;
             top: 20px;
@@ -32,6 +44,7 @@
             color: #1a2a3a;
             border-bottom: 2px solid #d94f4f;
             padding-bottom: 6px;
+            letter-spacing: 0.5px;
         }
         .control-panel label {
             font-weight: 600;
@@ -49,6 +62,7 @@
             background: white;
             font-size: 13px;
             cursor: pointer;
+            transition: border-color 0.2s;
         }
         .control-panel select:focus {
             outline: none;
@@ -56,6 +70,7 @@
             box-shadow: 0 0 0 3px rgba(217, 79, 79, 0.2);
         }
 
+        /* Filtros - Checkboxes */
         .filtros-container {
             margin-top: 10px;
             padding: 10px 12px;
@@ -77,10 +92,13 @@
             font-size: 12px;
             color: #2c3e50;
             cursor: pointer;
+            transition: background 0.2s;
             padding: 3px 6px;
             border-radius: 4px;
         }
-        .filtro-checkbox:hover { background: #e9ecef; }
+        .filtro-checkbox:hover {
+            background: #e9ecef;
+        }
         .filtro-checkbox input[type="checkbox"] {
             margin-right: 8px;
             cursor: pointer;
@@ -106,6 +124,11 @@
             color: #555;
             flex-shrink: 0;
         }
+        .filtro-checkbox .rango-label {
+            font-size: 10px;
+            color: #888;
+            margin-left: 4px;
+        }
 
         .btn-reset {
             background: #d94f4f;
@@ -120,22 +143,9 @@
             width: 100%;
             font-weight: 600;
         }
-        .btn-reset:hover { background: #b33a3a; }
-
-        .select-all-container {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 6px;
+        .btn-reset:hover {
+            background: #b33a3a;
         }
-        .select-all-container button {
-            font-size: 11px;
-            padding: 2px 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            background: white;
-            cursor: pointer;
-        }
-        .select-all-container button:hover { background: #e9ecef; }
 
         .info-box {
             margin-top: 12px;
@@ -147,8 +157,13 @@
             border-left: 4px solid #d94f4f;
             line-height: 1.5;
         }
-        .info-box strong { color: #1a2a3a; }
-        .info-box .valor { font-weight: 700; color: #d94f4f; }
+        .info-box strong {
+            color: #1a2a3a;
+        }
+        .info-box .valor {
+            font-weight: 700;
+            color: #d94f4f;
+        }
         .info-box .stats {
             font-size: 12px;
             color: #666;
@@ -156,7 +171,10 @@
             border-top: 1px dashed #ddd;
             padding-top: 4px;
         }
-        .info-box .stats span { font-weight: 700; color: #1a2a3a; }
+        .info-box .stats span {
+            font-weight: 700;
+            color: #1a2a3a;
+        }
 
         .legend {
             margin-top: 12px;
@@ -184,7 +202,10 @@
             border: 1px solid rgba(0, 0, 0, 0.2);
             flex-shrink: 0;
         }
-        .legend-text { font-size: 12px; color: #2c3e50; }
+        .legend-text {
+            font-size: 12px;
+            color: #2c3e50;
+        }
 
         .footer {
             position: absolute;
@@ -202,6 +223,24 @@
             white-space: nowrap;
         }
 
+        .select-all-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .select-all-container button {
+            font-size: 11px;
+            padding: 2px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .select-all-container button:hover {
+            background: #e9ecef;
+        }
+
         @media (max-width: 600px) {
             .control-panel {
                 top: 10px;
@@ -210,20 +249,42 @@
                 padding: 12px 14px;
                 max-height: 90vh;
             }
-            .control-panel h3 { font-size: 14px; }
-            .control-panel select { font-size: 12px; padding: 6px 8px; }
-            .legend { font-size: 11px; padding: 8px; }
-            .info-box { font-size: 12px; padding: 8px; }
-            .footer { font-size: 10px; padding: 4px 12px; bottom: 6px; }
-            .filtro-checkbox { font-size: 11px; }
-            .filtros-container { max-height: 180px; padding: 8px 10px; }
+            .control-panel h3 {
+                font-size: 14px;
+            }
+            .control-panel select {
+                font-size: 12px;
+                padding: 6px 8px;
+            }
+            .legend {
+                font-size: 11px;
+                padding: 8px;
+            }
+            .info-box {
+                font-size: 12px;
+                padding: 8px;
+            }
+            .footer {
+                font-size: 10px;
+                padding: 4px 12px;
+                bottom: 6px;
+            }
+            .filtro-checkbox {
+                font-size: 11px;
+            }
+            .filtros-container {
+                max-height: 180px;
+                padding: 8px 10px;
+            }
         }
     </style>
 </head>
 <body>
 
+    <!-- Mapa -->
     <div id="map"></div>
 
+    <!-- Panel de control -->
     <div class="control-panel">
         <h3>📊 Explorador socioeconómico</h3>
 
@@ -243,7 +304,10 @@
             <option value="PERS_VIV">👤 Pers. / vivienda ocupada</option>
         </select>
 
-        <div id="filtros-container" class="filtros-container"></div>
+        <!-- Contenedor de filtros (checkboxes) -->
+        <div id="filtros-container" class="filtros-container">
+            <!-- Se llena con JS -->
+        </div>
 
         <div class="info-box" id="info-box">
             <strong id="info-label">Categoría de densidad</strong><br />
@@ -251,18 +315,24 @@
             <div class="stats" id="stats-info">Mostrando: <span id="count-mostrados">0</span> de <span id="count-total">0</span> polígonos</div>
         </div>
 
-        <div id="legend" class="legend"></div>
+        <div id="legend" class="legend">
+            <!-- Se llena con JS -->
+        </div>
     </div>
 
     <div class="footer">Datos: Estudio Socioeconómico 2023 – RAUL VIQUEZ</div>
 
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
         // ================================================================
         // 1. MAPA Y CAPAS BASE
         // ================================================================
-        const map = L.map('map', { center: [8.0, -80.0], zoom: 7 });
+        const map = L.map('map', {
+            center: [8.0, -80.0],
+            zoom: 7
+        });
 
         const satelliteLayer = L.tileLayer(
             'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -292,11 +362,12 @@
         let currentVariable = 'CAT_DENS';
         let geoJsonData = null;
         let allFeatures = [];
-        let minVal = 0, maxVal = 1;
+        let minVal = 0,
+            maxVal = 1;
         let filtrosActivos = {};
 
         // ================================================================
-        // 3. PALETAS DE COLORES
+        // 3. PALETAS DE COLORES MEJORADAS
         // ================================================================
 
         const catColors = {
@@ -323,6 +394,7 @@
             'PERS_VIV': ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486']
         };
 
+        // Nombres de rangos para cada variable numérica
         const rangosNombres = {
             'DENS_POB': ['Muy baja', 'Baja', 'Media', 'Alta', 'Muy alta'],
             'VIV_OCUP': ['Muy pocas', 'Pocas', 'Medias', 'Muchas', 'Muchísimas'],
@@ -345,7 +417,9 @@
         function getFiltros(variable) {
             const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
             const activos = {};
-            checkboxes.forEach(cb => { activos[cb.value] = cb.checked; });
+            checkboxes.forEach(cb => {
+                activos[cb.value] = cb.checked;
+            });
             return { type: 'checkboxes', activos };
         }
 
@@ -353,6 +427,7 @@
             const filtros = getFiltros(variable);
             const activos = filtros.activos;
 
+            // Verificar si todos están desactivados
             const algunActivo = Object.values(activos).some(v => v === true);
             if (!algunActivo) return [];
 
@@ -361,8 +436,10 @@
                 if (variable === 'CAT_DENS') {
                     key = f.properties[variable] || 'SIN_DATOS';
                 } else {
+                    // Para variables numéricas, calcular en qué rango cae
                     const val = parseFloat(f.properties[variable]);
                     if (isNaN(val) || val === null) return false;
+                    // Determinar el rango (0-4) según su posición en el rango total
                     const t = (val - minVal) / (maxVal - minVal + 0.0001);
                     const index = Math.min(Math.floor(t * 5), 4);
                     key = `rango_${index}`;
@@ -372,11 +449,12 @@
         }
 
         // ================================================================
-        // 5. ACTUALIZAR MAPA CON FILTROS (POPUP MEJORADO)
+        // 5. ACTUALIZAR MAPA CON FILTROS
         // ================================================================
 
         function updateMapWithFilters() {
             if (!geoJsonData) return;
+
             const variable = currentVariable;
 
             if (currentLayer) {
@@ -384,6 +462,7 @@
                 currentLayer = null;
             }
 
+            // Calcular min/max para variables numéricas
             if (variable !== 'CAT_DENS') {
                 minVal = Infinity;
                 maxVal = -Infinity;
@@ -431,25 +510,11 @@
                 },
                 onEachFeature: function(feature, layer) {
                     const p = feature.properties;
-                    
-                    // Calcular área en km² (si está en metros)
-                    let areaKm2 = 'N/D';
-                    if (p.AREA !== undefined && p.AREA !== null && !isNaN(p.AREA)) {
-                        areaKm2 = (p.AREA / 1000000).toFixed(2);
-                    }
-                    
-                    // Obtener nombre del barrio
-                    const barrioNombre = p.BARR_NOMB || p.BARRIADA || 'N/D';
-
                     const popupContent = `
-                        <div style="font-family:'Segoe UI',sans-serif;min-width:220px;max-width:320px;">
-                            <h4 style="margin:0 0 4px 0;color:#1a2a3a;font-size:15px;">${p.PROVINCIA || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
-                            <div style="font-size:13px;color:#2c3e50;margin-bottom:4px;">
-                                <strong>Barrio:</strong> ${barrioNombre}
-                            </div>
+                        <div style="font-family:'Segoe UI',sans-serif;min-width:200px;max-width:300px;">
+                            <h4 style="margin:0 0 4px 0;color:#1a2a3a;">${p.PROVINCIA || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
                             <hr style="margin:4px 0;border:0;border-top:1px solid #ddd;">
                             <table style="width:100%;font-size:13px;line-height:1.6;">
-                                <tr><td><strong>Área:</strong></td><td>${areaKm2} km²</td></tr>
                                 <tr><td><strong>Viviendas:</strong></td><td>${p.VIVIENDA || 0}</td></tr>
                                 <tr><td><strong>Personas:</strong></td><td>${p.V_PERSONAS || 0}</td></tr>
                                 <tr><td><strong>Ocupadas:</strong></td><td>${p.VIV_OCUP || 0}</td></tr>
@@ -493,7 +558,7 @@
         }
 
         // ================================================================
-        // 6. CONSTRUIR FILTROS
+        // 6. CONSTRUIR FILTROS (Checkboxes para TODOS)
         // ================================================================
 
         function construirFiltros(variable) {
@@ -520,6 +585,7 @@
                     `;
                 }
             } else {
+                // Variables numéricas: 5 rangos con checkboxes
                 const nombres = rangosNombres[variable] || ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
                 html = `<h4>🔍 Filtrar por rango:</h4>`;
                 html += `<div class="select-all-container">
@@ -544,6 +610,7 @@
             html += `<button class="btn-reset" onclick="resetFiltros()">🔄 Restablecer filtros</button>`;
             container.innerHTML = html;
 
+            // Eventos
             document.querySelectorAll('.filtro-checkbox input[type="checkbox"]').forEach(cb => {
                 cb.addEventListener('change', function() {
                     filtrosActivos[this.value] = this.checked;
@@ -570,6 +637,7 @@
                     if (el) el.textContent = count;
                 }
             } else {
+                // Variables numéricas
                 for (let i = 0; i < 5; i++) {
                     const key = `rango_${i}`;
                     const minR = minVal + (maxVal - minVal) * (i / 5);
@@ -586,7 +654,7 @@
         }
 
         // ================================================================
-        // 8. TOGGLE ALL Y RESET
+        // 8. TOGGLE ALL
         // ================================================================
 
         function toggleAllFiltros(estado) {
@@ -598,6 +666,10 @@
             updateMapWithFilters();
         }
 
+        // ================================================================
+        // 9. RESET
+        // ================================================================
+
         function resetFiltros() {
             const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
             checkboxes.forEach(cb => {
@@ -608,7 +680,7 @@
         }
 
         // ================================================================
-        // 9. LEYENDA
+        // 10. LEYENDA
         // ================================================================
 
         function updateLegend(variable, data) {
@@ -643,7 +715,7 @@
         }
 
         // ================================================================
-        // 10. CARGA DEL GEOJSON
+        // 11. CARGA DEL GEOJSON
         // ================================================================
 
         async function loadGeoJSON() {
@@ -655,10 +727,71 @@
                 allFeatures = data.features;
                 console.log('✅ GeoJSON cargado:', allFeatures.length, 'features');
 
+                // Inicializar filtros activos
                 const categories = ['MUY_BAJA', 'BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 for (const cat of categories) filtrosActivos[cat] = true;
                 for (let i = 0; i < 5; i++) filtrosActivos[`rango_${i}`] = true;
 
                 const variable = document.getElementById('variable-select').value;
                 currentVariable = variable;
-                construir
+                construirFiltros(variable);
+                updateMapWithFilters();
+
+                const bounds = L.geoJSON(data).getBounds();
+                if (bounds.isValid()) {
+                    map.fitBounds(bounds, { padding: [20, 20] });
+                }
+            } catch (error) {
+                console.error('❌ Error:', error);
+                document.getElementById('info-box').innerHTML = `
+                    <div style="color:#b94a4a;font-weight:bold;">⚠️ Error al cargar los datos</div>
+                    <div style="font-size:12px;margin-top:4px;">${error.message}</div>
+                    <div style="font-size:12px;margin-top:4px;">Asegúrate de que <strong>vivienda_2023.geojson</strong> esté en la misma carpeta.</div>
+                `;
+            }
+        }
+
+        // ================================================================
+        // 12. EVENTOS
+        // ================================================================
+
+        document.getElementById('variable-select').addEventListener('change', function(e) {
+            if (geoJsonData) {
+                currentVariable = e.target.value;
+                // Inicializar filtros para la nueva variable
+                if (currentVariable === 'CAT_DENS') {
+                    const cats = ['MUY_BAJA', 'BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                    for (const c of cats) if (filtrosActivos[c] === undefined) filtrosActivos[c] = true;
+                } else {
+                    for (let i = 0; i < 5; i++) {
+                        if (filtrosActivos[`rango_${i}`] === undefined) filtrosActivos[`rango_${i}`] = true;
+                    }
+                }
+                construirFiltros(currentVariable);
+                updateMapWithFilters();
+            }
+        });
+
+        document.getElementById('map-select').addEventListener('change', function(e) {
+            const value = e.target.value;
+            map.removeLayer(satelliteLayer);
+            map.removeLayer(osmLayer);
+            map.removeLayer(topoLayer);
+            if (value === 'satellite') satelliteLayer.addTo(map);
+            else if (value === 'osm') osmLayer.addTo(map);
+            else if (value === 'topo') topoLayer.addTo(map);
+        });
+
+        window.toggleAllFiltros = toggleAllFiltros;
+        window.resetFiltros = resetFiltros;
+
+        // ================================================================
+        // 13. INICIO
+        // ================================================================
+
+        loadGeoJSON();
+        console.log('🗺️ Mapa interactivo iniciado – RAUL VIQUEZ');
+    </script>
+
+</body>
+</html>
