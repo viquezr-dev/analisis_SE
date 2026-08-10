@@ -644,16 +644,13 @@
             // PERS_VIV: Colores en escala de púrpuras
             // ============================================================
             if (variable === 'PERS_VIV') {
-            // Paleta de colores específica para PERS_VIV (púrpuras)
-            const colores = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
-            
-            const rangos = [
-                { min: 0, max: 1.2, label: 'Muy bajo (0.0-1.2)' },
-                { min: 1.2, max: 2.4, label: 'Bajo (1.2-2.4)' },
-                { min: 2.4, max: 3.6, label: 'Medio (2.4-3.6)' },
-                { min: 3.6, max: 4.8, label: 'Alto (3.6-4.8)' },
-                { min: 4.8, max: 6.0, label: 'Muy alto (4.8-6.0)' }
-            ];
+                const colores = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
+                if (value < 1.2) return colores[0];
+                if (value < 2.4) return colores[1];
+                if (value < 3.6) return colores[2];
+                if (value < 4.8) return colores[3];
+                return colores[4];
+            }
             
             for (let i = 0; i < rangos.length; i++) {
                 const r = rangos[i];
