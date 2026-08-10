@@ -580,13 +580,83 @@
         };
 
         function getColorByValue(variable, value, min, max) {
-            if (isNaN(value) || value === null) return '#b0b0b0';
+            if (isNaN(value) || value === null || value === 0) return '#cccccc';
             
+            // ============================================================
+            // CAT_DENS: Colores fijos por categoría
+            // ============================================================
             if (variable === 'CAT_DENS') {
-                return catColors[value] || '#b0b0b0';
+                return catColors[value] || '#cccccc';
             }
-
-            // Paleta para variables numéricas (verde)
+            
+            // ============================================================
+            // DENS_POB: Colores específicos por rango
+            // ============================================================
+            if (variable === 'DENS_POB') {
+                // Paleta de colores para densidad (rojos)
+                const coloresDensidad = [
+                    '#fcbba1',  // Muy baja (<100)
+                    '#fc9272',  // Baja (100-500)
+                    '#fb6a4a',  // Media-Baja (500-2000)
+                    '#de2d26',  // Media (2000-5000)
+                    '#a50f15',  // Alta (5000-10000)
+                    '#67000d'   // Muy alta (>10000)
+                ];
+                
+                const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
+                for (let i = 0; i < limites.length - 1; i++) {
+                    if (value >= limites[i] && value < limites[i + 1]) {
+                        return coloresDensidad[i];
+                    }
+                }
+                return coloresDensidad[coloresDensidad.length - 1];
+            }
+            
+            // ============================================================
+            // VIV_OCUP: Colores en escala de verdes
+            // ============================================================
+            if (variable === 'VIV_OCUP') {
+                const colores = ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
+                const limites = [0, 1600, 3200, 4800, 6400, 8000];
+                for (let i = 0; i < limites.length - 1; i++) {
+                    if (value >= limites[i] && value < limites[i + 1]) {
+                        return colores[i];
+                    }
+                }
+                return colores[colores.length - 1];
+            }
+            
+            // ============================================================
+            // PORC_OCU: Colores en escala de naranjas
+            // ============================================================
+            if (variable === 'PORC_OCU') {
+                const colores = ['#fdd0a2', '#fdae6b', '#f16913', '#d94801', '#8c2d04'];
+                const limites = [0, 20, 40, 60, 80, 100];
+                for (let i = 0; i < limites.length - 1; i++) {
+                    if (value >= limites[i] && value < limites[i + 1]) {
+                        return colores[i];
+                    }
+                }
+                return colores[colores.length - 1];
+            }
+            
+            // ============================================================
+            // PERS_VIV: Colores en escala de púrpuras
+            // ============================================================
+            if (variable === 'PERS_VIV') {
+                const colores = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
+                const limites = [0, 1.2, 2.4, 3.6, 4.8, 6.0];
+                for (let i = 0; i < limites.length - 1; i++) {
+                    if (value >= limites[i] && value < limites[i + 1]) {
+                        return colores[i];
+                    }
+                }
+                return colores[colores.length - 1];
+            }
+            
+            // ============================================================
+            // OTRAS VARIABLES: Escala genérica
+            // ============================================================
             const palette = ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
             const t = (value - min) / (max - min + 0.0001);
             const index = Math.min(Math.floor(t * palette.length), palette.length - 1);
@@ -1301,14 +1371,28 @@
         
             // --- DENS_POB: Rangos específicos ---
             if (variable === 'DENS_POB') {
-                const rangos = [
-                    { min: 0, max: 100, label: 'Muy baja (<100 hab/km²)', color: '#fcbba1' },
-                    { min: 100, max: 500, label: 'Baja (100-500)', color: '#fc9272' },
-                    { min: 500, max: 2000, label: 'Media-Baja (500-2000)', color: '#fb6a4a' },
-                    { min: 2000, max: 5000, label: 'Media (2000-5000)', color: '#de2d26' },
-                    { min: 5000, max: 10000, label: 'Alta (5000-10000)', color: '#a50f15' },
-                    { min: 10000, max: 20000, label: 'Muy alta (>10000)', color: '#67000d' }
-                ];
+            const rangos = [
+                { min: 0, max: 100, label: 'Muy baja (<100 hab/km²)' },
+                { min: 100, max: 500, label: 'Baja (100-500)' },
+                { min: 500, max: 2000, label: 'Media-Baja (500-2000)' },
+                { min: 2000, max: 5000, label: 'Media (2000-5000)' },
+                { min: 5000, max: 10000, label: 'Alta (5000-10000)' },
+                { min: 10000, max: 20000, label: 'Muy alta (>10000)' }
+            ];
+            
+            const coloresDensidad = ['#fcbba1', '#fc9272', '#fb6a4a', '#de2d26', '#a50f15', '#67000d'];
+            
+            for (let i = 0; i < rangos.length; i++) {
+                const r = rangos[i];
+                html += `<div class="legend-item">
+                    <div class="legend-color" style="background:${coloresDensidad[i]};"></div>
+                    <span class="legend-text">${r.label}</span>
+                </div>`;
+            }
+            html += `<div class="legend-desc">💡 ${descripcionIndicador[variable] || ''}</div>`;
+            legendDiv.innerHTML = html;
+            return;
+        }
                 // Calcular colores reales según los datos
                 const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
                 const maxVal = valores.length > 0 ? Math.max(...valores) : 20000;
