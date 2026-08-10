@@ -1,21 +1,24 @@
-<!DOCTYPE html>
-<html lang="es">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Estudio Socioeconómico - Vivienda 2023</title>
     
-    <!-- Leaflet CSS -->
+    <!-- 1. Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
-    <!-- Chart.js -->
+    <!-- 2. Chart.js (opcional, no depende de Leaflet) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     
-    <!-- Turf.js -->
+    <!-- 3. Turf.js (opcional) -->
     <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
     
-    <!-- Heatmap.js + Plugin Leaflet -->
+    <!-- 4. LEAFTET PRIMERO -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- 5. Heatmap.js (dependencia de leaflet-heatmap) -->
     <script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/build/heatmap.min.js"></script>
+    
+    <!-- 6. leaflet-heatmap.js (plugin de Leaflet) - DEBE IR DESPUÉS DE Leaflet Y heatmap.js -->
     <script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/plugins/leaflet-heatmap/leaflet-heatmap.js"></script>
     
     <style>
