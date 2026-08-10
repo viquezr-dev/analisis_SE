@@ -525,7 +525,7 @@
         let geoJsonData = null;
         let allFeatures = [];
         let filtrosActivos = {};
-
+        let chartInstance = null;
         let currentFeaturesFiltradas = [];
 
         // ================================================================
@@ -818,7 +818,7 @@
         // ================================================================
         // 6. ESTADÍSTICAS (Gráfico)
         // ================================================================
-        let chartInstance = null;
+       
 
         function mostrarEstadisticas() {
             const modal = document.getElementById('statsModal');
