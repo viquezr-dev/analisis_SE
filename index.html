@@ -580,97 +580,77 @@
         };
 
         function getColorByValue(variable, value, min, max) {
-            if (isNaN(value) || value === null || value === 0) return '#cccccc';
-            
-            // ============================================================
-            // CAT_DENS: Colores fijos por categoría
-            // ============================================================
-            if (variable === 'CAT_DENS') {
-                return catColors[value] || '#cccccc';
-            }
-            
-            // ============================================================
-            // DENS_POB: Colores específicos por rango
-            // ============================================================
-            if (variable === 'DENS_POB') {
-                // Paleta de colores para densidad (rojos)
-                const coloresDensidad = [
-                    '#fcbba1',  // Muy baja (<100)
-                    '#fc9272',  // Baja (100-500)
-                    '#fb6a4a',  // Media-Baja (500-2000)
-                    '#de2d26',  // Media (2000-5000)
-                    '#a50f15',  // Alta (5000-10000)
-                    '#67000d'   // Muy alta (>10000)
-                ];
+                if (isNaN(value) || value === null || value === 0) return '#cccccc';
                 
-                const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
-                for (let i = 0; i < limites.length - 1; i++) {
-                    if (value >= limites[i] && value < limites[i + 1]) {
-                        return coloresDensidad[i];
+                // ============================================================
+                // CAT_DENS: Colores fijos por categoría
+                // ============================================================
+                if (variable === 'CAT_DENS') {
+                    return catColors[value] || '#cccccc';
+                }
+                
+                // ============================================================
+                // DENS_POB: Colores específicos por rango
+                // ============================================================
+                if (variable === 'DENS_POB') {
+                    const coloresDensidad = ['#fcbba1', '#fc9272', '#fb6a4a', '#de2d26', '#a50f15', '#67000d'];
+                    const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
+                    for (let i = 0; i < limites.length - 1; i++) {
+                        if (value >= limites[i] && value < limites[i + 1]) {
+                            return coloresDensidad[i];
+                        }
                     }
+                    return coloresDensidad[coloresDensidad.length - 1];
                 }
-                return coloresDensidad[coloresDensidad.length - 1];
-            }
-            
-            // ============================================================
-            // VIV_OCUP: Colores en escala de verdes
-            // ============================================================
-            if (variable === 'VIV_OCUP') {
-                const colores = ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
-                const limites = [0, 1600, 3200, 4800, 6400, 8000];
-                for (let i = 0; i < limites.length - 1; i++) {
-                    if (value >= limites[i] && value < limites[i + 1]) {
-                        return colores[i];
+                
+                // ============================================================
+                // VIV_OCUP: Colores en escala de verdes
+                // ============================================================
+                if (variable === 'VIV_OCUP') {
+                    const colores = ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
+                    const limites = [0, 1600, 3200, 4800, 6400, 8000];
+                    for (let i = 0; i < limites.length - 1; i++) {
+                        if (value >= limites[i] && value < limites[i + 1]) {
+                            return colores[i];
+                        }
                     }
+                    return colores[colores.length - 1];
                 }
-                return colores[colores.length - 1];
-            }
-            
-            // ============================================================
-            // PORC_OCU: Colores en escala de naranjas
-            // ============================================================
-            if (variable === 'PORC_OCU') {
-                const colores = ['#fdd0a2', '#fdae6b', '#f16913', '#d94801', '#8c2d04'];
-                const limites = [0, 20, 40, 60, 80, 100];
-                for (let i = 0; i < limites.length - 1; i++) {
-                    if (value >= limites[i] && value < limites[i + 1]) {
-                        return colores[i];
+                
+                // ============================================================
+                // PORC_OCU: Colores en escala de naranjas
+                // ============================================================
+                if (variable === 'PORC_OCU') {
+                    const colores = ['#fdd0a2', '#fdae6b', '#f16913', '#d94801', '#8c2d04'];
+                    const limites = [0, 20, 40, 60, 80, 100];
+                    for (let i = 0; i < limites.length - 1; i++) {
+                        if (value >= limites[i] && value < limites[i + 1]) {
+                            return colores[i];
+                        }
                     }
+                    return colores[colores.length - 1];
                 }
-                return colores[colores.length - 1];
-            }
-            
-            // ============================================================
-            // PERS_VIV: Colores en escala de púrpuras
-            // ============================================================
-           if (variable === 'PERS_VIV') {
-                const colores = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
-                const rangos = [
-                    { min: 0, max: 1.2, label: 'Muy bajo (0.0-1.2)' },
-                    { min: 1.2, max: 2.4, label: 'Bajo (1.2-2.4)' },
-                    { min: 2.4, max: 3.6, label: 'Medio (2.4-3.6)' },
-                    { min: 3.6, max: 4.8, label: 'Alto (3.6-4.8)' },
-                    { min: 4.8, max: 6.0, label: 'Muy alto (4.8-6.0)' }
-                ];
-                for (let i = 0; i < rangos.length; i++) {
-                    html += `<div class="legend-item">
-                        <div class="legend-color" style="background:${colores[i]};"></div>
-                        <span class="legend-text">${rangos[i].label}</span>
-                    </div>`;
+                
+                // ============================================================
+                // PERS_VIV: Colores en escala de púrpuras (CORREGIDO)
+                // ============================================================
+                if (variable === 'PERS_VIV') {
+                    const colores = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
+                    if (value < 1.2) return colores[0];
+                    if (value < 2.4) return colores[1];
+                    if (value < 3.6) return colores[2];
+                    if (value < 4.8) return colores[3];
+                    return colores[4];
                 }
-                html += `<div class="legend-desc">💡 ${descripcionIndicador[variable] || ''}</div>`;
-                legendDiv.innerHTML = html;
-                return;
+                
+                // ============================================================
+                // OTRAS VARIABLES: Escala genérica
+                // ============================================================
+                const palette = ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
+                const t = (value - min) / (max - min + 0.0001);
+                const index = Math.min(Math.floor(t * palette.length), palette.length - 1);
+                return palette[index];
             }
-            
-            // ============================================================
-            // OTRAS VARIABLES: Escala genérica
-            // ============================================================
-            const palette = ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
-            const t = (value - min) / (max - min + 0.0001);
-            const index = Math.min(Math.floor(t * palette.length), palette.length - 1);
-            return palette[index];
-        }
 
         function getRangoIndex(variable, value) {
             if (isNaN(value) || value === null || value === 0) return 0;
