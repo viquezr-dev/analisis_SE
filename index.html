@@ -242,10 +242,10 @@
 
         <label for="variable-select">📈 Indicador:</label>
         <select id="variable-select">
-            <option value="CAT_DENS">🏷️ Categoría de densidad</option>
+            <option value="CAT_DENS" selected>🏷️ Categoría de densidad</option>
             <option value="DENS_POB">👥 Densidad poblacional</option>
             <option value="VIV_OCUP">🏠 Viviendas ocupadas</option>
-            <option value="PORC_OCU" selected>📊 % Ocupación</option>
+            <option value="PORC_OCU">📊 % Ocupación</option>
             <option value="PERS_VIV">👤 Pers./viv. ocupada</option>
         </select>
 
@@ -254,7 +254,7 @@
         </div>
 
         <div class="info-box" id="info-box">
-            <strong id="info-label">% Ocupación</strong><br />
+            <strong id="info-label">Categoría de densidad</strong><br />
             <span id="info-value">Selecciona un polígono</span>
             <div class="stats" id="stats-info">Mostrando: <span id="count-mostrados">0</span> de <span id="count-total">0</span> polígonos</div>
         </div>
@@ -294,7 +294,7 @@
         // 2. VARIABLES GLOBALES
         // ================================================================
         let currentLayer = null;
-        let currentVariable = 'PORC_OCU';
+        let currentVariable = 'CAT_DENS';
         let geoJsonData = null;
         let allFeatures = [];
         let filtrosActivos = {};
@@ -305,22 +305,25 @@
         const catColors = {
             'MUY_BAJA': '#fcbba1',
             'BAJA': '#fc9272',
-            'MEDIA': '#fb6a4a',
-            'ALTA': '#de2d26',
-            'MUY_ALTA': '#a50f15',
+            'MEDIA_BAJA': '#fb6a4a',
+            'MEDIA': '#de2d26',
+            'ALTA': '#a50f15',
+            'MUY_ALTA': '#67000d',
             'SIN_DATOS': '#b0b0b0'
         };
+
         const catLabels = {
             'MUY_BAJA': 'Muy baja (<100 hab/km²)',
             'BAJA': 'Baja (100-500)',
-            'MEDIA': 'Media (500-1500)',
-            'ALTA': 'Alta (1500-5000)',
-            'MUY_ALTA': 'Muy alta (>5000)',
+            'MEDIA_BAJA': 'Media-Baja (500-2000)',
+            'MEDIA': 'Media (2000-5000)',
+            'ALTA': 'Alta (5000-10000)',
+            'MUY_ALTA': 'Muy alta (>10000)',
             'SIN_DATOS': 'Sin datos'
         };
 
         const numPalettes = {
-            'DENS_POB': ['#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#084594'],
+            'DENS_POB': ['#fcbba1', '#fc9272', '#fb6a4a', '#de2d26', '#a50f15', '#67000d'],
             'VIV_OCUP': ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'],
             'PORC_OCU': ['#fdd0a2', '#fdae6b', '#f16913', '#d94801', '#8c2d04'],
             'PERS_VIV': ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486']
@@ -330,6 +333,20 @@
         // RANGOS FIJOS POR VARIABLE
         // ================================================================
         const rangosFijos = {
+            'DENS_POB': {
+                min: 0,
+                max: 20000,
+                steps: 6,
+                nombres: [
+                    'Muy baja (<100)',
+                    'Baja (100-500)',
+                    'Media-Baja (500-2000)',
+                    'Media (2000-5000)',
+                    'Alta (5000-10000)',
+                    'Muy alta (>10000)'
+                ],
+                limites: [0, 100, 500, 2000, 5000, 10000, 20000]
+            },
             'PERS_VIV': {
                 min: 0,
                 max: 6,
@@ -342,12 +359,6 @@
                 steps: 5,
                 nombres: ['Muy bajo (0–20%)', 'Bajo (20–40%)', 'Medio (40–60%)', 'Alto (60–80%)', 'Muy alto (80–100%)']
             },
-            'DENS_POB': {
-                min: 0,
-                max: 130000,
-                steps: 5,
-                nombres: ['Muy bajo (0–26k)', 'Bajo (26k–52k)', 'Medio (52k–78k)', 'Alto (78k–104k)', 'Muy alto (104k–130k)']
-            },
             'VIV_OCUP': {
                 min: 0,
                 max: 8000,
@@ -358,7 +369,6 @@
 
         // Nombres genéricos para variables sin rangos fijos
         const rangosNombres = {
-            'DENS_POB': ['Muy baja', 'Baja', 'Media', 'Alta', 'Muy alta'],
             'VIV_OCUP': ['Muy pocas', 'Pocas', 'Medias', 'Muchas', 'Muchísimas'],
             'PORC_OCU': ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'],
             'PERS_VIV': ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto']
@@ -374,12 +384,45 @@
         };
 
         // ================================================================
+        // FUNCIÓN PARA OBTENER LA CATEGORÍA DE DENSIDAD (CAT_DENS)
+        // ================================================================
+        function getCategoriaDensidad(valor) {
+            if (valor === null || valor === undefined || isNaN(valor)) return 'SIN_DATOS';
+            if (valor < 100) return 'MUY_BAJA';
+            if (valor < 500) return 'BAJA';
+            if (valor < 2000) return 'MEDIA_BAJA';
+            if (valor < 5000) return 'MEDIA';
+            if (valor < 10000) return 'ALTA';
+            return 'MUY_ALTA';
+        }
+
+        // ================================================================
         // FUNCIÓN PARA OBTENER COLOR SEGÚN VARIABLE
         // ================================================================
         function getColorByValue(variable, value, min, max) {
             if (isNaN(value) || value === null) return '#b0b0b0';
+
+            if (variable === 'CAT_DENS') {
+                return catColors[value] || '#b0b0b0';
+            }
+
             const palette = numPalettes[variable] || numPalettes['DENS_POB'];
             let t;
+
+            if (variable === 'DENS_POB') {
+                // Usar rangos específicos de densidad
+                const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
+                for (let i = 0; i < limites.length - 1; i++) {
+                    if (value >= limites[i] && value < limites[i + 1]) {
+                        t = i / (limites.length - 2);
+                        break;
+                    }
+                }
+                if (value >= 20000) t = 1;
+                const index = Math.min(Math.floor(t * (palette.length - 1)), palette.length - 1);
+                return palette[index];
+            }
+
             if (rangosFijos[variable]) {
                 const r = rangosFijos[variable];
                 t = (value - r.min) / (r.max - r.min);
@@ -396,20 +439,40 @@
         // ================================================================
         function getRangoIndex(variable, value) {
             if (isNaN(value) || value === null) return 0;
+
+            if (variable === 'DENS_POB') {
+                const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
+                for (let i = 0; i < limites.length - 1; i++) {
+                    if (value >= limites[i] && value < limites[i + 1]) {
+                        return i;
+                    }
+                }
+                return limites.length - 2;
+            }
+
             if (rangosFijos[variable]) {
                 const r = rangosFijos[variable];
                 const t = (value - r.min) / (r.max - r.min);
                 return Math.min(Math.floor(t * r.steps), r.steps - 1);
-            } else {
-                // Para variables sin rangos fijos (solo CAT_DENS que usa categorías)
-                return 0;
             }
+            return 0;
         }
 
         // ================================================================
         // FUNCIÓN PARA OBTENER EL NOMBRE DEL RANGO
         // ================================================================
         function getRangoNombre(variable, index) {
+            if (variable === 'DENS_POB') {
+                const nombres = [
+                    'Muy baja (<100)',
+                    'Baja (100-500)',
+                    'Media-Baja (500-2000)',
+                    'Media (2000-5000)',
+                    'Alta (5000-10000)',
+                    'Muy alta (>10000)'
+                ];
+                return nombres[index] || `Rango ${index+1}`;
+            }
             if (rangosFijos[variable]) {
                 return rangosFijos[variable].nombres[index] || `Rango ${index+1}`;
             }
@@ -472,6 +535,7 @@
                 style: function(feature) {
                     let value = feature.properties[variable];
                     let color = '#b0b0b0';
+
                     if (variable === 'CAT_DENS') {
                         color = catColors[value] || '#b0b0b0';
                     } else {
@@ -560,7 +624,7 @@
             let nombres = [];
 
             if (variable === 'CAT_DENS') {
-                items = ['MUY_BAJA', 'BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                items = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 nombres = items.map(c => catLabels[c]);
                 html = `<h4>🔍 Filtrar por categoría:</h4>`;
                 html += `<div class="select-all-container">
@@ -581,9 +645,24 @@
                 }
             } else {
                 // Variables numéricas con rangos fijos
-                const r = rangosFijos[variable];
-                const stepCount = r ? r.steps : 5;
-                const nombresRango = r ? r.nombres : ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+                let stepCount = 5;
+                let nombresRango = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+
+                if (variable === 'DENS_POB') {
+                    stepCount = 6;
+                    nombresRango = [
+                        'Muy baja (<100)',
+                        'Baja (100-500)',
+                        'Media-Baja (500-2000)',
+                        'Media (2000-5000)',
+                        'Alta (5000-10000)',
+                        'Muy alta (>10000)'
+                    ];
+                } else if (rangosFijos[variable]) {
+                    const r = rangosFijos[variable];
+                    stepCount = r.steps;
+                    nombresRango = r.nombres;
+                }
 
                 html = `<h4>🔍 Filtrar por rango:</h4>`;
                 html += `<div class="select-all-container">
@@ -593,9 +672,7 @@
                 for (let i = 0; i < stepCount; i++) {
                     const key = `rango_${i}`;
                     const checked = filtrosActivos[key] !== false;
-                    const minVal = r ? r.min + (r.max - r.min) * (i / stepCount) : i / stepCount;
-                    const maxVal = r ? r.min + (r.max - r.min) * ((i + 1) / stepCount) : (i + 1) / stepCount;
-                    const color = getColorByValue(variable, (minVal + maxVal) / 2, r ? r.min : 0, r ? r.max : 1);
+                    const color = getColorByValue(variable, i / stepCount, 0, 1);
                     html += `
                             <label class="filtro-checkbox">
                                 <input type="checkbox" value="${key}" ${checked ? 'checked' : ''} />
@@ -627,24 +704,39 @@
         function actualizarContadores() {
             const variable = currentVariable;
             if (variable === 'CAT_DENS') {
-                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 for (const cat of categories) {
                     const count = allFeatures.filter(f => (f.properties['CAT_DENS'] || 'SIN_DATOS') === cat).length;
                     const el = document.getElementById(`count-${cat}`);
                     if (el) el.textContent = count;
                 }
             } else {
-                const r = rangosFijos[variable];
-                const stepCount = r ? r.steps : 5;
+                let stepCount = 5;
+                if (variable === 'DENS_POB') stepCount = 6;
+                else if (rangosFijos[variable]) stepCount = rangosFijos[variable].steps;
+
                 for (let i = 0; i < stepCount; i++) {
                     const key = `rango_${i}`;
-                    const minVal = r ? r.min + (r.max - r.min) * (i / stepCount) : i / stepCount;
-                    const maxVal = r ? r.min + (r.max - r.min) * ((i + 1) / stepCount) : (i + 1) / stepCount;
-                    const count = allFeatures.filter(f => {
-                        const val = parseFloat(f.properties[variable]);
-                        if (isNaN(val) || val === null) return false;
-                        return val >= minVal && val < maxVal;
-                    }).length;
+                    let count = 0;
+
+                    if (variable === 'DENS_POB') {
+                        const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
+                        count = allFeatures.filter(f => {
+                            const val = parseFloat(f.properties[variable]);
+                            if (isNaN(val) || val === null) return false;
+                            return val >= limites[i] && val < limites[i + 1];
+                        }).length;
+                    } else if (rangosFijos[variable]) {
+                        const r = rangosFijos[variable];
+                        const minVal = r.min + (r.max - r.min) * (i / stepCount);
+                        const maxVal = r.min + (r.max - r.min) * ((i + 1) / stepCount);
+                        count = allFeatures.filter(f => {
+                            const val = parseFloat(f.properties[variable]);
+                            if (isNaN(val) || val === null) return false;
+                            return val >= minVal && val < maxVal;
+                        }).length;
+                    }
+
                     const el = document.getElementById(`count-${key}`);
                     if (el) el.textContent = count;
                 }
@@ -680,7 +772,7 @@
             let html = `<div class="legend-title">Leyenda</div>`;
 
             if (variable === 'CAT_DENS') {
-                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 for (const cat of categories) {
                     html += `
                             <div class="legend-item">
@@ -690,13 +782,27 @@
                         `;
                 }
             } else {
-                const r = rangosFijos[variable];
-                const stepCount = r ? r.steps : 5;
-                const nombres = r ? r.nombres : ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+                let stepCount = 5;
+                let nombres = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+
+                if (variable === 'DENS_POB') {
+                    stepCount = 6;
+                    nombres = [
+                        'Muy baja (<100)',
+                        'Baja (100-500)',
+                        'Media-Baja (500-2000)',
+                        'Media (2000-5000)',
+                        'Alta (5000-10000)',
+                        'Muy alta (>10000)'
+                    ];
+                } else if (rangosFijos[variable]) {
+                    const r = rangosFijos[variable];
+                    stepCount = r.steps;
+                    nombres = r.nombres;
+                }
+
                 for (let i = 0; i < stepCount; i++) {
-                    const minVal = r ? r.min + (r.max - r.min) * (i / stepCount) : i / stepCount;
-                    const maxVal = r ? r.min + (r.max - r.min) * ((i + 1) / stepCount) : (i + 1) / stepCount;
-                    const color = getColorByValue(variable, (minVal + maxVal) / 2, r ? r.min : 0, r ? r.max : 1);
+                    const color = getColorByValue(variable, i / stepCount, 0, 1);
                     html += `
                             <div class="legend-item">
                                 <div class="legend-color" style="background:${color};"></div>
@@ -728,9 +834,9 @@
                 console.log('✅ GeoJSON cargado:', allFeatures.length, 'features');
 
                 // Inicializar filtros
-                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 for (const cat of categories) filtrosActivos[cat] = true;
-                for (let i = 0; i < 5; i++) filtrosActivos[`rango_${i}`] = true;
+                for (let i = 0; i < 6; i++) filtrosActivos[`rango_${i}`] = true;
 
                 const variable = document.getElementById('variable-select').value;
                 currentVariable = variable;
@@ -758,11 +864,12 @@
             if (geoJsonData) {
                 currentVariable = e.target.value;
                 if (currentVariable === 'CAT_DENS') {
-                    const cats = ['MUY_BAJA', 'BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                    const cats = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                     for (const c of cats) if (filtrosActivos[c] === undefined) filtrosActivos[c] = true;
                 } else {
-                    const r = rangosFijos[currentVariable];
-                    const stepCount = r ? r.steps : 5;
+                    let stepCount = 5;
+                    if (currentVariable === 'DENS_POB') stepCount = 6;
+                    else if (rangosFijos[currentVariable]) stepCount = rangosFijos[currentVariable].steps;
                     for (let i = 0; i < stepCount; i++) {
                         if (filtrosActivos[`rango_${i}`] === undefined) filtrosActivos[`rango_${i}`] = true;
                     }
