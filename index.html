@@ -111,7 +111,7 @@
             height: 16px;
             border-radius: 4px;
             margin-right: 10px;
-            border: 1px solid rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.2);
             flex-shrink: 0;
         }
         .legend-text {
@@ -238,9 +238,6 @@
         // Añadir capa por defecto (satélite)
         satelliteLayer.addTo(map);
 
-        // Control de capas (selector en el panel, no el nativo)
-        // Lo manejamos con el <select>
-
         // ================================================================
         // 2. VARIABLES GLOBALES
         // ================================================================
@@ -251,16 +248,17 @@
             maxVal = 1;
 
         // ================================================================
-        // 3. PALETA DE COLORES MEJORADA (más vibrante)
+        // 3. PALETAS DE COLORES ESPECÍFICAS Y VISIBLES (Mínimos sin blanco)
         // ================================================================
-        // Para categorías de densidad
+        
+        // 1. Categorías de densidad (Rojos / Burdeos)
         const catColors = {
-            'MUY_BAJA': '#fee5d9', // rojo muy claro
-            'BAJA': '#fcae91', // salmón
-            'MEDIA': '#fb6a4a', // naranja-rojo
-            'ALTA': '#cb181d', // rojo intenso
-            'MUY_ALTA': '#67000d', // burdeos oscuro
-            'SIN_DATOS': '#e0e0e0'
+            'MUY_BAJA': '#fcbba1', // Mínimo: Salmón claro visible
+            'BAJA': '#fc9272',     // Salmón medio
+            'MEDIA': '#fb6a4a',    // Naranja-rojo
+            'ALTA': '#de2d26',     // Rojo intenso
+            'MUY_ALTA': '#a50f15', // Rojo oscuro
+            'SIN_DATOS': '#b0b0b0'
         };
         const catLabels = {
             'MUY_BAJA': 'Muy baja (<100 hab/km²)',
@@ -271,20 +269,48 @@
             'SIN_DATOS': 'Sin datos'
         };
 
-        // Para variables numéricas: paleta de 5 colores (azul → rojo)
-        const numPalette = [
-            '#f7fbff', // azul muy claro
-            '#c6dbef', // azul claro
-            '#6baed6', // azul medio
-            '#3182bd', // azul intenso
-            '#08519c' // azul oscuro
-        ];
+        // Paletas específicas de 5 tonos para cada variable numérica
+        const numPalettes = {
+            // 2. Densidad poblacional: Gama AZULES
+            'DENS_POB': [
+                '#9ecae1', // Mínimo: Celeste bien visible
+                '#6baed6',
+                '#4292c6',
+                '#2171b5',
+                '#084594'  // Máximo: Azul marino profundo
+            ],
+            // 3. Viviendas ocupadas: Gama VERDES
+            'VIV_OCUP': [
+                '#a1d99b', // Mínimo: Verde menta visible
+                '#74c476',
+                '#41ab5d',
+                '#238b45',
+                '#005a32'  // Máximo: Verde bosque oscuro
+            ],
+            // 4. % Ocupación: Gama NARANJAS / ÁMBAR
+            'PORC_OCU': [
+                '#fdd0a2', // Mínimo: Naranja suave visible
+                '#fdae6b',
+                '#f16913',
+                '#d94801',
+                '#8c2d04'  // Máximo: Marrón rojizo
+            ],
+            // 5. Pers. / vivienda ocupada: Gama PURPURAS / VIOLETAS
+            'PERS_VIV': [
+                '#bcbddc', // Mínimo: Lavanda visible
+                '#9e9ac8',
+                '#807dba',
+                '#6a51a3',
+                '#4a1486'  // Máximo: Púrpura oscuro
+            ]
+        };
 
-        function getColorByValue(value, min, max) {
-            if (isNaN(value) || value === null) return '#cccccc';
+        function getColorByValue(variable, value, min, max) {
+            if (isNaN(value) || value === null) return '#b0b0b0';
+            const palette = numPalettes[variable] || numPalettes['DENS_POB'];
             const t = (value - min) / (max - min + 0.0001);
-            const index = Math.min(Math.floor(t * (numPalette.length - 1)), numPalette.length - 1);
-            return numPalette[index];
+            const index = Math.min(Math.floor(t * palette.length), palette.length - 1);
+            return palette[index];
         }
 
         // ================================================================
@@ -298,11 +324,11 @@
                 const categories = ['MUY_BAJA', 'BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 for (const cat of categories) {
                     html += `
-                            <div class="legend-item">
-                                <div class="legend-color" style="background:${catColors[cat]};"></div>
-                                <span class="legend-text">${catLabels[cat]}</span>
-                            </div>
-                        `;
+                        <div class="legend-item">
+                            <div class="legend-color" style="background:${catColors[cat]};"></div>
+                            <span class="legend-text">${catLabels[cat]}</span>
+                        </div>
+                    `;
                 }
             } else {
                 // Variables numéricas: 5 intervalos
@@ -321,14 +347,14 @@
                     for (let i = 0; i < steps; i++) {
                         const low = min + i * step;
                         const high = min + (i + 1) * step;
-                        const color = getColorByValue(low, min, max);
+                        const color = getColorByValue(variable, low, min, max);
                         const label = `${low.toFixed(1)} – ${high.toFixed(1)}`;
                         html += `
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background:${color};"></div>
-                                    <span class="legend-text">${label}</span>
-                                </div>
-                            `;
+                            <div class="legend-item">
+                                <div class="legend-color" style="background:${color};"></div>
+                                <span class="legend-text">${label}</span>
+                            </div>
+                        `;
                     }
                 }
             }
@@ -362,65 +388,65 @@
                 if (maxVal === -Infinity) maxVal = 1;
             }
 
-            // Crear capa
+            // Crear capa con bordes oscuros finos y alta opacidad para resaltar en OSM
             currentLayer = L.geoJSON(geoJsonData, {
                 style: function(feature) {
                     let value = feature.properties[variable];
-                    let color = '#cccccc';
+                    let color = '#b0b0b0';
 
                     if (variable === 'CAT_DENS') {
-                        color = catColors[value] || '#cccccc';
+                        color = catColors[value] || '#b0b0b0';
                     } else {
                         const numVal = parseFloat(value);
                         if (!isNaN(numVal) && numVal !== null) {
-                            color = getColorByValue(numVal, minVal, maxVal);
+                            color = getColorByValue(variable, numVal, minVal, maxVal);
                         }
                     }
                     return {
                         fillColor: color,
-                        weight: 1.5,
-                        opacity: 0.8,
-                        color: 'white',
+                        weight: 1.2,
+                        opacity: 0.9,
+                        color: '#333333',     // Borde gris oscuro para separar del mapa OSM
                         fillOpacity: 0.85
                     };
                 },
                 onEachFeature: function(feature, layer) {
                     const p = feature.properties;
                     const popupContent = `
-                            <div style="font-family:'Segoe UI',sans-serif;min-width:200px;max-width:300px;">
-                                <h4 style="margin:0 0 4px 0;color:#1a2a3a;">${p.PROVINCIA || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
-                                <hr style="margin:4px 0;border:0;border-top:1px solid #ddd;">
-                                <table style="width:100%;font-size:13px;line-height:1.6;">
-                                    <tr><td><strong>Viviendas:</strong></td><td>${p.VIVIENDA || 0}</td></tr>
-                                    <tr><td><strong>Personas:</strong></td><td>${p.V_PERSONAS || 0}</td></tr>
-                                    <tr><td><strong>Ocupadas:</strong></td><td>${p.VIV_OCUP || 0}</td></tr>
-                                    <tr><td><strong>% Ocupación:</strong></td><td>${p.PORC_OCU ? p.PORC_OCU.toFixed(1) : 0}%</td></tr>
-                                    <tr><td><strong>Densidad:</strong></td><td>${p.DENS_POB ? p.DENS_POB.toFixed(1) : 0} hab/km²</td></tr>
-                                    <tr><td><strong>Pers./viv. ocupada:</strong></td><td>${p.PERS_VIV ? p.PERS_VIV.toFixed(2) : 0}</td></tr>
-                                    <tr><td><strong>Categoría:</strong></td><td>${p.CAT_DENS || 'Sin datos'}</td></tr>
-                                </table>
-                            </div>
-                        `;
+                        <div style="font-family:'Segoe UI',sans-serif;min-width:200px;max-width:300px;">
+                            <h4 style="margin:0 0 4px 0;color:#1a2a3a;">${p.PROVINCIA || p.PROV_NOMB || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
+                            <hr style="margin:4px 0;border:0;border-top:1px solid #ddd;">
+                            <table style="width:100%;font-size:13px;line-height:1.6;">
+                                <tr><td><strong>Viviendas:</strong></td><td>${p.VIVIENDA || 0}</td></tr>
+                                <tr><td><strong>Personas:</strong></td><td>${p.V_PERSONAS || 0}</td></tr>
+                                <tr><td><strong>Ocupadas:</strong></td><td>${p.VIV_OCUP || 0}</td></tr>
+                                <tr><td><strong>% Ocupación:</strong></td><td>${p.PORC_OCU ? p.PORC_OCU.toFixed(1) : 0}%</td></tr>
+                                <tr><td><strong>Densidad:</strong></td><td>${p.DENS_POB ? p.DENS_POB.toFixed(1) : 0} hab/km²</td></tr>
+                                <tr><td><strong>Pers./viv. ocupada:</strong></td><td>${p.PERS_VIV ? p.PERS_VIV.toFixed(2) : 0}</td></tr>
+                                <tr><td><strong>Categoría:</strong></td><td>${p.CAT_DENS || 'Sin datos'}</td></tr>
+                            </table>
+                        </div>
+                    `;
                     layer.bindPopup(popupContent);
 
                     // Hover: resaltar
                     layer.on('mouseover', function() {
-                        this.setStyle({ weight: 3, color: '#222', fillOpacity: 0.95 });
+                        this.setStyle({ weight: 2.5, color: '#000000', fillOpacity: 0.95 });
                         this.bringToFront();
                     });
                     layer.on('mouseout', function() {
                         // Reaplicar estilo original
                         const val = this.feature.properties[variable];
-                        let color = '#cccccc';
+                        let color = '#b0b0b0';
                         if (variable === 'CAT_DENS') {
-                            color = catColors[val] || '#cccccc';
+                            color = catColors[val] || '#b0b0b0';
                         } else {
                             const n = parseFloat(val);
-                            if (!isNaN(n) && n !== null) color = getColorByValue(n, minVal, maxVal);
+                            if (!isNaN(n) && n !== null) color = getColorByValue(variable, n, minVal, maxVal);
                         }
                         this.setStyle({
-                            weight: 1.5,
-                            color: 'white',
+                            weight: 1.2,
+                            color: '#333333',
                             fillColor: color,
                             fillOpacity: 0.85
                         });
@@ -459,10 +485,10 @@
             } catch (error) {
                 console.error('❌ Error:', error);
                 document.getElementById('info-box').innerHTML = `
-                        <div style="color:#b94a4a;font-weight:bold;">⚠️ Error al cargar los datos</div>
-                        <div style="font-size:12px;margin-top:4px;">${error.message}</div>
-                        <div style="font-size:12px;margin-top:4px;">Asegúrate de que <strong>vivienda_2023.geojson</strong> esté en la misma carpeta.</div>
-                    `;
+                    <div style="color:#b94a4a;font-weight:bold;">⚠️ Error al cargar los datos</div>
+                    <div style="font-size:12px;margin-top:4px;">${error.message}</div>
+                    <div style="font-size:12px;margin-top:4px;">Asegúrate de que <strong>vivienda_2023.geojson</strong> esté en la misma carpeta.</div>
+                `;
             }
         }
 
