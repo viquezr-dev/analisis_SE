@@ -523,7 +523,7 @@
                                 <tr><td><strong>Densidad:</strong></td><td>${p.DENS_POB ? p.DENS_POB.toFixed(1) : 0} hab/km²</td></tr>
                                 <tr><td><strong>Pers./viv. ocupada:</strong></td><td>${p.PERS_VIV ? p.PERS_VIV.toFixed(2) : 0}</td></tr>
                                 <tr><td><strong>Categoría:</strong></td><td>${p.CAT_DENS || 'Sin datos'}</td></tr>
-                                <tr><td><strong>Área:</strong></td><td>${p.AREA ? (p.AREA / 1000000).toFixed(2) : 0} km² (${p.AREA ? p.AREA.toFixed(0) : 0} m²)</td></tr>
+                                <tr><td><strong>Área:</strong></td><td>${(p.AREA ? (p.AREA / 1000000).toFixed(2) : 0)} km² (${p.AREA ? p.AREA.toFixed(0) : 0} m²)</td></tr>
                             </table>
                         </div>
                     `;
