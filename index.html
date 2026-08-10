@@ -572,11 +572,11 @@
         };
 
         const descripcionIndicador = {
-            'CAT_DENS': 'Clasificación del territorio según densidad poblacional (hab/km²).',
-            'DENS_POB': 'Número de habitantes por kilómetro cuadrado.',
-            'VIV_OCUP': 'Cantidad de viviendas actualmente habitadas.',
-            'PORC_OCU': 'Porcentaje de viviendas ocupadas respecto al total.',
-            'PERS_VIV': 'Promedio de personas por vivienda ocupada.'
+            'CAT_DENS': 'Clasificación del territorio según densidad poblacional (hab/km²). Útil para identificar zonas urbanas y rurales.',
+            'DENS_POB': 'Número de habitantes por kilómetro cuadrado. Indica la concentración poblacional.',
+            'VIV_OCUP': 'Cantidad de viviendas actualmente habitadas. Excluye viviendas desocupadas, en construcción o abandonadas.',
+            'PORC_OCU': 'Porcentaje de viviendas ocupadas respecto al total. Valores altos indican baja desocupación.',
+            'PERS_VIV': 'Promedio de personas por vivienda ocupada. Valores altos pueden indicar hacinamiento.'
         };
 
         function getColorByValue(variable, value, min, max) {
@@ -1065,6 +1065,7 @@
                     <div class="legend-desc">💡 Intensidad: ${variableLabels[variable] || variable}</div>
                 `;
 
+                updateLegend(variable, featuresFiltradas);
                 document.getElementById('info-label').textContent = variableLabels[variable] || variable;
                 document.getElementById('info-value').textContent = `${featuresFiltradas.length} puntos en calor`;
                 return;
