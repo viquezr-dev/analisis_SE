@@ -860,31 +860,34 @@
         }
         
         function generarHeatmap() {
-            console.log('🔥 Generando heatmap...');
+            console.log('🔥 Generando heatmap con puntos...');
             
-            if (currentLayer) {
-                map.removeLayer(currentLayer);
-            }
-            
-            const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
-            const variable = currentVariable;
-            
-            if (!features || features.length === 0) {
-                alert('No hay datos para generar el mapa de calor');
+            // Verificar que los puntos estén cargados
+            if (!geoJsonDataPuntos || !geoJsonDataPuntos.features || geoJsonDataPuntos.features.length === 0) {
+                alert('No se encontró el archivo de puntos (vivienda_2023_p.geojson).');
                 toggleHeatmap();
                 return;
             }
             
-            console.log('📊 Features a procesar:', features.length);
+            // Ocultar capa de polígonos
+            if (currentLayer) {
+                map.removeLayer(currentLayer);
+            }
+            
+            // Usar los puntos filtrados (aplicar los mismos filtros que en polígonos)
+            const featuresPuntos = geoJsonDataPuntos.features;
+            const variable = currentVariable;
+            
+            console.log('📊 Puntos disponibles:', featuresPuntos.length);
             
             // Preparar puntos [lat, lon, intensidad]
             const puntos = [];
-            const valores = features
+            const valores = featuresPuntos
                 .map(function(f) { return parseFloat(f.properties[variable]); })
                 .filter(function(v) { return !isNaN(v) && v !== null && v > 0; });
             
             if (valores.length === 0) {
-                alert('No hay valores positivos para el indicador seleccionado');
+                alert('No hay valores positivos para el indicador seleccionado en los puntos.');
                 toggleHeatmap();
                 return;
             }
@@ -895,84 +898,44 @@
             
             console.log('📊 Rango de valores:', minValor, '→', maxValor);
             
-            var puntosGenerados = 0;
-            var sinGeometria = 0;
-            var errores = 0;
+            // Filtrar puntos según filtros activos (si aplica)
+            var filtrosActivosHeat = getFiltros();
+            var algunActivo = Object.values(filtrosActivosHeat).some(function(v) { return v === true; });
             
-            for (var i = 0; i < features.length; i++) {
-                var f = features[i];
+            for (var i = 0; i < featuresPuntos.length; i++) {
+                var f = featuresPuntos[i];
                 var geom = f.geometry;
-                if (!geom) {
-                    sinGeometria++;
-                    continue;
-                }
+                if (!geom || geom.type !== 'Point') continue;
                 
-                var coords = null;
-                
-                // MANEJO DE MultiPolygon
-                if (geom.type === 'MultiPolygon') {
-                    // MultiPolygon: [polígono1, polígono2, ...]
-                    // Cada polígono: [anillo_exterior, anillo_interior1, ...]
-                    // Tomamos el primer polígono y su primer anillo (exterior)
-                    if (geom.coordinates && geom.coordinates.length > 0) {
-                        var primerPoligono = geom.coordinates[0];
-                        if (primerPoligono && primerPoligono.length > 0) {
-                            coords = primerPoligono[0]; // Primer anillo del primer polígono
-                        }
-                    }
-                } else if (geom.type === 'Polygon') {
-                    // Polygon: [anillo_exterior, anillo_interior1, ...]
-                    if (geom.coordinates && geom.coordinates.length > 0) {
-                        coords = geom.coordinates[0];
-                    }
-                } else if (geom.type === 'Point') {
-                    var lat = geom.coordinates[1];
-                    var lng = geom.coordinates[0];
-                    var valor = parseFloat(f.properties[variable]) || 0;
-                    var intensidad = 0.1 + 0.9 * ((valor - minValor) / rango);
-                    puntos.push([lat, lng, intensidad]);
-                    puntosGenerados++;
-                    continue;
-                }
-                
-                if (!coords || coords.length === 0) {
-                    errores++;
-                    continue;
-                }
-                
-                // Calcular centroide
-                var lat = 0, lng = 0;
-                var coordsValidas = 0;
-                for (var j = 0; j < coords.length; j++) {
-                    var c = coords[j];
-                    if (Array.isArray(c) && c.length === 2 && !isNaN(c[0]) && !isNaN(c[1])) {
-                        lat += c[1];
-                        lng += c[0];
-                        coordsValidas++;
-                    }
-                }
-                
-                if (coordsValidas === 0) {
-                    errores++;
-                    continue;
-                }
-                
-                lat /= coordsValidas;
-                lng /= coordsValidas;
+                var lat = geom.coordinates[1];
+                var lng = geom.coordinates[0];
+                if (isNaN(lat) || isNaN(lng)) continue;
                 
                 var valor = parseFloat(f.properties[variable]) || 0;
-                var intensidad = 0.1 + 0.9 * ((valor - minValor) / rango);
                 
-                puntos.push([lat, lng, intensidad]);
-                puntosGenerados++;
+                // Aplicar filtros (para CAT_DENS)
+                if (variable === 'CAT_DENS') {
+                    var categoria = f.properties[variable] || 'SIN_DATOS';
+                    if (algunActivo && filtrosActivosHeat[categoria] === false) continue;
+                } else {
+                    // Para variables numéricas, aplicar filtros de rango si existen
+                    if (algunActivo && valor > 0) {
+                        var index = getRangoIndex(variable, valor);
+                        var key = 'rango_' + index;
+                        if (filtrosActivosHeat[key] === false) continue;
+                    }
+                }
+                
+                if (valor > 0) {
+                    var intensidad = 0.1 + 0.9 * ((valor - minValor) / rango);
+                    puntos.push([lat, lng, intensidad]);
+                }
             }
             
-            console.log('✅ Puntos generados:', puntosGenerados);
-            console.log('⚠️ Sin geometría:', sinGeometria);
-            console.log('⚠️ Errores:', errores);
+            console.log('✅ Puntos generados para heatmap:', puntos.length);
             
             if (puntos.length === 0) {
-                alert('No se pudieron generar puntos para el heatmap. Verifica que los polígonos tengan geometría válida.');
+                alert('No se generaron puntos para el heatmap. Prueba con otro indicador o quita los filtros.');
                 toggleHeatmap();
                 return;
             }
@@ -1609,40 +1572,54 @@
         }
 
         // ================================================================
-        // 11. CARGA DEL GEOJSON
+        // 11. CARGA DEL GEOJSON (POLÍGONOS + PUNTOS)
         // ================================================================
+        let geoJsonDataPoligonos = null;
+        let geoJsonDataPuntos = null;
+        
         async function loadGeoJSON() {
             try {
-                var response = await fetch('vivienda_2023.geojson');
-                if (!response.ok) throw new Error('HTTP ' + response.status);
-                var data = await response.json();
-                geoJsonData = data;
-                allFeatures = data.features;
-                console.log('✅ GeoJSON cargado:', allFeatures.length, 'features');
-
-                var categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
-                for (var i = 0; i < categories.length; i++) {
-                    filtrosActivos[categories[i]] = true;
+                // Cargar polígonos (para visualización normal)
+                const responsePol = await fetch('vivienda_2023.geojson');
+                if (!responsePol.ok) throw new Error('HTTP ' + responsePol.status + ' - Polígonos no encontrados');
+                const dataPol = await responsePol.json();
+                geoJsonDataPoligonos = dataPol;
+                geoJsonData = dataPol; // Para compatibilidad con código existente
+                allFeatures = dataPol.features;
+                console.log('✅ Polígonos cargados:', allFeatures.length, 'features');
+        
+                // Cargar puntos (para heatmap)
+                const responsePts = await fetch('vivienda_2023_p.geojson');
+                if (responsePts.ok) {
+                    const dataPts = await responsePts.json();
+                    geoJsonDataPuntos = dataPts;
+                    console.log('✅ Puntos cargados:', geoJsonDataPuntos.features.length, 'features');
+                } else {
+                    console.warn('⚠️ No se encontró el archivo de puntos. El heatmap no funcionará.');
+                    geoJsonDataPuntos = null;
                 }
-                for (var j = 0; j < 6; j++) {
-                    filtrosActivos['rango_' + j] = true;
-                }
-
-                var variable = document.getElementById('variable-select').value;
+        
+                // Inicializar filtros y mapa
+                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                for (const cat of categories) filtrosActivos[cat] = true;
+                for (let i = 0; i < 6; i++) filtrosActivos[`rango_${i}`] = true;
+        
+                const variable = document.getElementById('variable-select').value;
                 currentVariable = variable;
                 construirFiltros(variable);
                 updateMapWithFilters();
-
-                var bounds = L.geoJSON(data).getBounds();
+        
+                const bounds = L.geoJSON(dataPol).getBounds();
                 if (bounds.isValid()) {
                     map.fitBounds(bounds, { padding: [20, 20] });
                 }
             } catch (error) {
                 console.error('❌ Error:', error);
-                document.getElementById('info-box').innerHTML =
-                    '<div style="color:#b94a4a;font-weight:bold;">⚠️ Error al cargar los datos</div>' +
-                    '<div style="font-size:10px;margin-top:2px;">' + error.message + '</div>' +
-                    '<div style="font-size:10px;margin-top:2px;">Asegúrate de que <strong>vivienda_2023.geojson</strong> esté en la misma carpeta.</div>';
+                document.getElementById('info-box').innerHTML = `
+                    <div style="color:#b94a4a;font-weight:bold;">⚠️ Error al cargar los datos</div>
+                    <div style="font-size:10px;margin-top:2px;">${error.message}</div>
+                    <div style="font-size:10px;margin-top:2px;">Asegúrate de que los archivos <strong>vivienda_2023.geojson</strong> y <strong>vivienda_2023_p.geojson</strong> estén en la misma carpeta.</div>
+                `;
             }
         }
 
