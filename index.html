@@ -765,75 +765,66 @@
         }
 
         // ================================================================
-        // 9. LEYENDA CON DESCRIPCIÓN
+        // 9. LEYENDA CON DESCRIPCIÓN - CORREGIDA
         // ================================================================
         function updateLegend(variable, data) {
-                const legendDiv = document.getElementById('legend');
-                let html = `<div class="legend-title">Leyenda</div>`;
-            
-                if (variable === 'CAT_DENS') {
-                    const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
-                    for (const cat of categories) {
-                        html += `
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background:${catColors[cat]};"></div>
-                                    <span class="legend-text">${catLabels[cat]}</span>
-                                </div>
-                            `;
-                    }
-                } else if (variable === 'DENS_POB') {
-                    // Rangos específicos de densidad
-                    const rangos = [
-                        { min: 0, max: 100, label: 'Muy baja (<100)' },
-                        { min: 100, max: 500, label: 'Baja (100-500)' },
-                        { min: 500, max: 2000, label: 'Media-Baja (500-2000)' },
-                        { min: 2000, max: 5000, label: 'Media (2000-5000)' },
-                        { min: 5000, max: 10000, label: 'Alta (5000-10000)' },
-                        { min: 10000, max: 20000, label: 'Muy alta (>10000)' }
-                    ];
-            
-                    for (const r of rangos) {
-                        const valorMedio = (r.min + r.max) / 2;
-                        const color = getColorByValue('DENS_POB', valorMedio, 0, 20000);
-                        html += `
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background:${color};"></div>
-                                    <span class="legend-text">${r.label}</span>
-                                </div>
-                            `;
-                    }
-                } else {
-                    // Otras variables numéricas
-                    let stepCount = 5;
-                    let nombres = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
-            
-                    if (rangosFijos[variable]) {
-                        const r = rangosFijos[variable];
-                        stepCount = r.steps;
-                        nombres = r.nombres;
-                    }
-            
-                    for (let i = 0; i < stepCount; i++) {
-                        const minVal = i / stepCount;
-                        const maxVal = (i + 1) / stepCount;
-                        const valorMedio = (minVal + maxVal) / 2;
-                        const color = getColorByValue(variable, valorMedio, 0, 1);
-                        html += `
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background:${color};"></div>
-                                    <span class="legend-text">${nombres[i]}</span>
-                                </div>
-                            `;
-                    }
+            const legendDiv = document.getElementById('legend');
+            let html = `<div class="legend-title">Leyenda</div>`;
+
+            if (variable === 'CAT_DENS') {
+                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                for (const cat of categories) {
+                    html += `
+                            <div class="legend-item">
+                                <div class="legend-color" style="background:${catColors[cat]};"></div>
+                                <span class="legend-text">${catLabels[cat]}</span>
+                            </div>
+                        `;
                 }
-            
-                // Descripción del indicador
-                const desc = descripcionIndicador[variable] || '';
-                if (desc) {
-                    html += `<div class="legend-desc">💡 ${desc}</div>`;
+            } else if (variable === 'DENS_POB') {
+                // Rangos específicos de densidad
+                const rangos = [
+                    { min: 0, max: 100, label: 'Muy baja (<100)' },
+                    { min: 100, max: 500, label: 'Baja (100-500)' },
+                    { min: 500, max: 2000, label: 'Media-Baja (500-2000)' },
+                    { min: 2000, max: 5000, label: 'Media (2000-5000)' },
+                    { min: 5000, max: 10000, label: 'Alta (5000-10000)' },
+                    { min: 10000, max: 20000, label: 'Muy alta (>10000)' }
+                ];
+
+                for (const r of rangos) {
+                    const valorMedio = (r.min + r.max) / 2;
+                    const color = getColorByValue('DENS_POB', valorMedio, 0, 20000);
+                    html += `
+                            <div class="legend-item">
+                                <div class="legend-color" style="background:${color};"></div>
+                                <span class="legend-text">${r.label}</span>
+                            </div>
+                        `;
                 }
-            
-                legendDiv.innerHTML = html;
+            } else {
+                // Otras variables numéricas
+                let stepCount = 5;
+                let nombres = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+
+                if (rangosFijos[variable]) {
+                    const r = rangosFijos[variable];
+                    stepCount = r.steps;
+                    nombres = r.nombres;
+                }
+
+                for (let i = 0; i < stepCount; i++) {
+                    const minVal = i / stepCount;
+                    const maxVal = (i + 1) / stepCount;
+                    const valorMedio = (minVal + maxVal) / 2;
+                    const color = getColorByValue(variable, valorMedio, 0, 1);
+                    html += `
+                            <div class="legend-item">
+                                <div class="legend-color" style="background:${color};"></div>
+                                <span class="legend-text">${nombres[i]}</span>
+                            </div>
+                        `;
+                }
             }
 
             // Descripción del indicador
