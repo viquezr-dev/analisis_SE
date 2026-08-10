@@ -4,553 +4,1164 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Estudio Socioeconómico - Vivienda 2023</title>
+    
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Estilos personalizados -->
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <!-- Turf.js -->
+    <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+    
+    <!-- Heatmap.js + Plugin Leaflet -->
+    <script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/build/heatmap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/plugins/leaflet-heatmap/leaflet-heatmap.js"></script>
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; }
         #map { height: 100vh; width: 100%; }
 
-        /* Panel de control flotante */
         .control-panel {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 10px;
+            right: 10px;
             z-index: 1000;
-            background: rgba(255,255,255,0.95);
-            padding: 18px 22px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            max-width: 300px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 12px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            max-width: 270px;
             backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.3);
-            max-height: 90vh;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            max-height: 95vh;
             overflow-y: auto;
+            font-size: 11px;
         }
         .control-panel h3 {
-            margin-bottom: 12px;
-            font-size: 16px;
+            font-size: 13px;
             color: #1a2a3a;
-            border-bottom: 2px solid #2a8b5e;
-            padding-bottom: 6px;
-            letter-spacing: 0.5px;
+            border-bottom: 2px solid #d94f4f;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
         }
-
-        /* Botones para alternar modo de visualización */
-        .mode-toggle {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 14px;
-        }
-        .toggle-btn {
-            flex: 1;
-            padding: 8px 10px;
-            border: 1px solid #2a8b5e;
-            background: white;
-            color: #2a8b5e;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .toggle-btn.active, .toggle-btn:hover {
-            background: #2a8b5e;
-            color: white;
-        }
-
         .control-panel label {
             font-weight: 600;
-            font-size: 13px;
+            font-size: 10px;
             color: #2c3e50;
             display: block;
-            margin-top: 8px;
-            margin-bottom: 4px;
+            margin-top: 5px;
+            margin-bottom: 2px;
         }
-        .control-panel select, .control-panel input[type="range"] {
+        .control-panel select {
             width: 100%;
-            padding: 8px 10px;
-            border-radius: 8px;
+            padding: 3px 6px;
+            border-radius: 5px;
             border: 1px solid #ccc;
             background: white;
-            font-size: 13px;
+            font-size: 10px;
             cursor: pointer;
         }
         .control-panel select:focus {
             outline: none;
-            border-color: #2a8b5e;
-            box-shadow: 0 0 0 3px rgba(42,139,94,0.2);
+            border-color: #d94f4f;
+            box-shadow: 0 0 0 2px rgba(217, 79, 79, 0.2);
         }
-        .control-panel .info {
-            margin-top: 14px;
-            font-size: 13px;
+
+        /* Modo de visualización */
+        .mode-toggle {
+            display: flex;
+            gap: 4px;
+            margin-top: 5px;
+        }
+        .mode-toggle button {
+            flex: 1;
+            padding: 4px 6px;
+            border: 1px solid #d94f4f;
+            background: white;
+            color: #d94f4f;
+            border-radius: 5px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mode-toggle button.active {
+            background: #d94f4f;
+            color: white;
+        }
+        .mode-toggle button:hover { opacity: 0.85; }
+
+        /* Buscador */
+        .search-container {
+            margin-top: 5px;
+            display: flex;
+            gap: 4px;
+        }
+        .search-container input {
+            flex: 1;
+            padding: 3px 6px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 10px;
+            outline: none;
+        }
+        .search-container input:focus {
+            border-color: #d94f4f;
+            box-shadow: 0 0 0 2px rgba(217, 79, 79, 0.2);
+        }
+        .search-container button {
+            padding: 3px 8px;
+            border-radius: 5px;
+            border: none;
+            background: #d94f4f;
+            color: white;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        .search-container button:hover { background: #b33a3a; }
+
+        /* Botones de acción */
+        .action-buttons {
+            display: flex;
+            gap: 4px;
+            margin-top: 5px;
+        }
+        .action-buttons button {
+            flex: 1;
+            padding: 3px 6px;
+            border-radius: 5px;
+            border: none;
+            font-size: 9px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .btn-export { background: #2a8b5e; color: white; }
+        .btn-export:hover { background: #1e6b47; }
+        .btn-stats { background: #2c6b9e; color: white; }
+        .btn-stats:hover { background: #1e4f7a; }
+        .btn-reset { background: #fee2e2; color: #991b1b; }
+        .btn-reset:hover { background: #fca5a5; }
+
+        /* Filtros */
+        .filtros-container {
+            margin-top: 5px;
+            padding: 5px 7px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 3px solid #d94f4f;
+            max-height: 160px;
+            overflow-y: auto;
+        }
+        .filtros-container h4 {
+            font-size: 10px;
+            color: #1a2a3a;
+            margin-bottom: 3px;
+        }
+        .filtro-checkbox {
+            display: flex;
+            align-items: center;
+            margin: 2px 0;
+            font-size: 10px;
+            color: #2c3e50;
+            cursor: pointer;
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+        .filtro-checkbox:hover { background: #e9ecef; }
+        .filtro-checkbox input[type="checkbox"] {
+            margin-right: 5px;
+            width: 12px;
+            height: 12px;
+            accent-color: #d94f4f;
+            flex-shrink: 0;
+        }
+        .filtro-checkbox .color-muestra {
+            width: 14px;
+            height: 10px;
+            border-radius: 2px;
+            margin-right: 5px;
+            border: 1px solid rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+        .filtro-checkbox .count-badge {
+            margin-left: auto;
+            font-size: 8px;
+            background: #e9ecef;
+            padding: 0 5px;
+            border-radius: 8px;
+            color: #555;
+        }
+        .select-all-container {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 3px;
+        }
+        .select-all-container button {
+            font-size: 9px;
+            padding: 1px 6px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            background: white;
+            cursor: pointer;
+        }
+        .select-all-container button:hover { background: #e9ecef; }
+        .btn-reset-filtros {
+            background: #d94f4f;
+            color: white;
+            border: none;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            cursor: pointer;
+            margin-top: 3px;
+            width: 100%;
+            font-weight: 600;
+        }
+        .btn-reset-filtros:hover { background: #b33a3a; }
+
+        /* Info Box */
+        .info-box {
+            margin-top: 5px;
+            font-size: 10px;
             color: #34495e;
             background: #f8f9fa;
-            padding: 10px;
-            border-radius: 8px;
-            border-left: 4px solid #2a8b5e;
+            padding: 5px 7px;
+            border-radius: 5px;
+            border-left: 3px solid #d94f4f;
+            line-height: 1.4;
         }
-        .control-panel .info span {
-            font-weight: 700;
-            color: #1a2a3a;
+        .info-box strong { color: #1a2a3a; }
+        .info-box .valor { font-weight: 700; color: #d94f4f; }
+        .info-box .stats {
+            font-size: 9px;
+            color: #666;
+            margin-top: 2px;
+            border-top: 1px dashed #ddd;
+            padding-top: 2px;
         }
+        .info-box .stats span { font-weight: 700; color: #1a2a3a; }
 
-        /* Controles de calor (deslizadores) */
-        .heatmap-controls {
-            display: none; /* Oculto por defecto en modo polígono */
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px dashed #ccc;
-        }
-
-        /* Leyenda de rectángulos */
+        /* Leyenda */
         .legend {
-            margin-top: 14px;
-            padding: 10px;
+            margin-top: 5px;
+            padding: 5px 7px;
             background: #f8f9fa;
-            border-radius: 8px;
-            font-size: 12px;
+            border-radius: 5px;
+            font-size: 9px;
+        }
+        .legend-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 3px;
+            font-size: 10px;
         }
         .legend-item {
             display: flex;
             align-items: center;
-            margin: 4px 0;
+            margin: 2px 0;
         }
         .legend-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            margin-right: 10px;
+            width: 14px;
+            height: 10px;
+            border-radius: 2px;
+            margin-right: 5px;
             border: 1px solid rgba(0,0,0,0.1);
+            flex-shrink: 0;
         }
-        .legend-text {
-            font-size: 13px;
-            color: #2c3e50;
-        }
-
-        /* Leyenda de barra de calor continuo */
+        .legend-text { font-size: 9px; color: #2c3e50; }
         .gradient-bar {
-            height: 12px;
+            height: 10px;
             width: 100%;
-            border-radius: 6px;
+            border-radius: 4px;
             background: linear-gradient(to right, blue, cyan, lime, yellow, red);
-            margin-top: 8px;
+            margin-top: 4px;
         }
         .gradient-labels {
             display: flex;
             justify-content: space-between;
-            font-size: 11px;
+            font-size: 9px;
             color: #555;
-            margin-top: 2px;
+        }
+        .legend-desc {
+            font-size: 8px;
+            color: #888;
+            margin-top: 3px;
+            padding-top: 3px;
+            border-top: 1px dashed #ddd;
+            font-style: italic;
         }
 
-        /* Pie de página */
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(2px);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .modal-content h3 {
+            font-size: 16px;
+            color: #1a2a3a;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #d94f4f;
+            padding-bottom: 6px;
+        }
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 22px;
+            cursor: pointer;
+            color: #888;
+            background: none;
+            border: none;
+        }
+        .modal-close:hover { color: #d94f4f; }
+        .modal-content canvas { max-height: 300px; max-width: 100%; }
+        .modal-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 12px;
+            font-size: 11px;
+        }
+        .modal-stats .stat-item {
+            background: #f8f9fa;
+            padding: 6px 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .modal-stats .stat-item .num { font-weight: 700; color: #d94f4f; font-size: 14px; }
+        .modal-stats .stat-item .label { color: #666; font-size: 9px; }
+
         .footer {
             position: absolute;
-            bottom: 10px;
+            bottom: 6px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
             background: rgba(0,0,0,0.7);
             color: white;
-            padding: 6px 18px;
-            border-radius: 20px;
-            font-size: 12px;
+            padding: 3px 12px;
+            border-radius: 14px;
+            font-size: 9px;
             backdrop-filter: blur(2px);
             pointer-events: none;
+            white-space: nowrap;
         }
+
         @media (max-width: 600px) {
             .control-panel {
-                top: 10px;
-                right: 10px;
-                max-width: 240px;
-                padding: 12px 16px;
+                top: 6px;
+                right: 6px;
+                max-width: 200px;
+                padding: 6px 8px;
             }
+            .control-panel h3 { font-size: 11px; }
+            .control-panel select { font-size: 9px; padding: 2px 5px; }
+            .filtros-container { max-height: 120px; padding: 4px 5px; }
+            .filtro-checkbox { font-size: 9px; }
+            .legend { font-size: 8px; padding: 4px 5px; }
+            .info-box { font-size: 9px; padding: 4px 5px; }
+            .footer { font-size: 7px; padding: 2px 8px; }
+            .modal-content { padding: 14px; max-width: 95%; }
+            .modal-stats { grid-template-columns: 1fr 1fr; gap: 4px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Mapa -->
     <div id="map"></div>
 
-    <!-- Panel de control -->
-    <div class="control-panel">
-        <h3>📊 Indicador Socioeconómico</h3>
-        
-        <!-- Botones para cambiar entre Polígonos y Calor -->
-        <label>Modo de visualización:</label>
-        <div class="mode-toggle">
-            <button id="btn-polygon" class="toggle-btn active">🗺️ Polígonos</button>
-            <button id="btn-heatmap" class="toggle-btn">🔥 Calor Continuo</button>
+    <!-- Modal de Estadísticas -->
+    <div class="modal-overlay" id="statsModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeStats()">&times;</button>
+            <h3 id="statsTitle">📊 Estadísticas del indicador</h3>
+            <canvas id="statsChart"></canvas>
+            <div class="modal-stats" id="statsNumbers"></div>
         </div>
+    </div>
 
-        <label for="variable-select">Selecciona variable:</label>
-        <select id="variable-select">
-            <option value="DENS_POB">Densidad poblacional (hab/km²)</option>
-            <option value="CAT_DENS" selected>Categoría de densidad</option>
-            <option value="VIV_OCUP">Viviendas ocupadas</option>
-            <option value="PORC_OCU">% Ocupación</option>
-            <option value="PERS_VIV">Personas / vivienda ocupada</option>
+    <div class="control-panel">
+        <h3>📊 Explorador socioeconómico</h3>
+
+        <label for="map-select">🗺️ Mapa base:</label>
+        <select id="map-select">
+            <option value="satellite">🛰️ Satélite</option>
+            <option value="osm">🌍 OpenStreetMap</option>
+            <option value="topo">🗺️ Topográfico</option>
         </select>
 
-        <!-- Deslizadores exclusivos para Modo Calor -->
-        <div id="heatmap-controls" class="heatmap-controls">
-            <label for="radius-slider">Radio del calor (<span id="radius-val">30</span>px):</label>
-            <input type="range" id="radius-slider" min="10" max="80" value="30">
+        <label>📈 Modo de visualización:</label>
+        <div class="mode-toggle">
+            <button id="btn-polygon" class="active">🗺️ Polígonos</button>
+            <button id="btn-heatmap">🔥 Calor</button>
+        </div>
 
+        <label for="variable-select">📈 Indicador:</label>
+        <select id="variable-select">
+            <option value="CAT_DENS" selected>🏷️ Categoría de densidad</option>
+            <option value="DENS_POB">👥 Densidad poblacional</option>
+            <option value="VIV_OCUP">🏠 Viviendas ocupadas</option>
+            <option value="PORC_OCU">📊 % Ocupación</option>
+            <option value="PERS_VIV">👤 Pers./viv. ocupada</option>
+        </select>
+
+        <!-- Buscador -->
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="🔍 Buscar provincia/distrito..." />
+            <button onclick="buscarPoligonos()">Buscar</button>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="action-buttons">
+            <button class="btn-stats" onclick="mostrarEstadisticas()">📊 Estadísticas</button>
+            <button class="btn-export" onclick="exportarCSV()">💾 Exportar CSV</button>
+            <button class="btn-reset" onclick="resetFiltros()">🔄 Resetear</button>
+        </div>
+
+        <!-- Controles de calor (radio y blur) -->
+        <div id="heatmap-controls" style="display:none; margin-top:5px; padding-top:5px; border-top:1px dashed #ccc;">
+            <label for="radius-slider">Radio (<span id="radius-val">30</span>px):</label>
+            <input type="range" id="radius-slider" min="10" max="80" value="30" style="width:100%;">
             <label for="blur-slider">Difuminado (<span id="blur-val">15</span>px):</label>
-            <input type="range" id="blur-slider" min="5" max="40" value="15">
+            <input type="range" id="blur-slider" min="5" max="40" value="15" style="width:100%;">
         </div>
 
-        <div class="info" id="info-box">
-            <span id="info-label">Categoría de densidad</span><br />
-            <span id="info-value">Clic en un polígono para ver detalles</span>
+        <div id="filtros-container" class="filtros-container">
+            <!-- Se llena con JS -->
         </div>
 
-        <!-- Leyenda Dinámica (Polígonos o Calor) -->
-        <div id="legend" class="legend"></div>
+        <div class="info-box" id="info-box">
+            <strong id="info-label">Categoría de densidad</strong><br />
+            <span id="info-value">Selecciona un polígono</span>
+            <div class="stats" id="stats-info">Mostrando: <span id="count-mostrados">0</span> de <span id="count-total">0</span> polígonos</div>
+        </div>
+
+        <div id="legend" class="legend">
+            <!-- Se llena con JS -->
+        </div>
     </div>
 
     <div class="footer">Datos: Estudio Socioeconómico 2023 – RAUL VIQUEZ</div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-ajax/2.1.0/leaflet.ajax.min.js"></script>
-    <!-- Turf.js para calcular centroides -->
-    <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
-    <!-- Heatmap.js + Plugin Leaflet -->
-    <script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/build/heatmap.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/plugins/leaflet-heatmap/leaflet-heatmap.js"></script>
-
+    
     <script>
-        // ----------------------------------------------------------------
-        // 1. INICIALIZAR MAPA Y CAPAS BASE
-        // ----------------------------------------------------------------
-        const map = L.map('map').setView([8.0, -80.0], 7);
+        // ================================================================
+        // 1. MAPA Y CAPAS BASE
+        // ================================================================
+        const map = L.map('map', { center: [8.0, -80.0], zoom: 7 });
 
-        // Capa satelital (Esri)
-        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri',
+        const satelliteLayer = L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri',
+                maxZoom: 19
+            }
+        );
+
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
             maxZoom: 19
-        }).addTo(map);
-
-        // Capa de calles (OpenStreetMap)
-        const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
         });
 
-        // Selector de Capas Base
-        L.control.layers({ "Satélite": satelliteLayer, "Calles": streetLayer }).addTo(map);
+        const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenTopoMap',
+            maxZoom: 17
+        });
 
-        // ----------------------------------------------------------------
+        satelliteLayer.addTo(map);
+
+        // ================================================================
         // 2. VARIABLES GLOBALES
-        // ----------------------------------------------------------------
-        let currentLayer = null;          // Capa GeoJSON interactiva
-        let heatmapLayer = null;          // Capa Mapa de Calor
-        let currentVariable = 'CAT_DENS'; // Variable seleccionada
-        let geoJsonData = null;          // Datos cargados
-        let currentMode = 'polygon';      // 'polygon' o 'heatmap'
+        // ================================================================
+        let currentLayer = null;
+        let currentVariable = 'CAT_DENS';
+        let geoJsonData = null;
+        let allFeatures = [];
+        let filtrosActivos = {};
+        let chartInstance = null;
+        let currentFeaturesFiltradas = [];
+        let currentMode = 'polygon';
+        let heatmapLayer = null;
 
-        // Configurar capa de Mapa de Calor
+        // Configurar capa de mapa de calor
         const heatmapConfig = {
-            "radius": 30,
-            "maxOpacity": 0.8,
-            "minOpacity": 0.05,
-            "blur": 0.75,
-            "scaleRadius": false,
-            "useLocalExtrema": false,
+            radius: 30,
+            maxOpacity: 0.8,
+            minOpacity: 0.05,
+            blur: 0.375,
+            scaleRadius: false,
+            useLocalExtrema: false,
             latField: 'lat',
             lngField: 'lng',
             valueField: 'count'
         };
         heatmapLayer = new HeatmapOverlay(heatmapConfig);
-        map.addLayer(heatmapLayer);
 
-        // ----------------------------------------------------------------
-        // 3. PALETAS Y COLORES
-        // ----------------------------------------------------------------
+        // ================================================================
+        // 3. PALETAS DE COLORES
+        // ================================================================
         const catColors = {
-            'MUY_BAJA': '#f7fcfd',
-            'BAJA': '#ccece6',
-            'MEDIA': '#99d8c9',
-            'ALTA': '#66c2a4',
-            'MUY_ALTA': '#2ca25f',
-            'SIN_DATOS': '#e0e0e0'
+            'MUY_BAJA': '#fcbba1',
+            'BAJA': '#fc9272',
+            'MEDIA_BAJA': '#fb6a4a',
+            'MEDIA': '#de2d26',
+            'ALTA': '#a50f15',
+            'MUY_ALTA': '#67000d',
+            'SIN_DATOS': '#b0b0b0'
         };
+
         const catLabels = {
             'MUY_BAJA': 'Muy baja (<100 hab/km²)',
             'BAJA': 'Baja (100-500)',
-            'MEDIA': 'Media (500-1500)',
-            'ALTA': 'Alta (1500-5000)',
-            'MUY_ALTA': 'Muy alta (>5000)',
+            'MEDIA_BAJA': 'Media-Baja (500-2000)',
+            'MEDIA': 'Media (2000-5000)',
+            'ALTA': 'Alta (5000-10000)',
+            'MUY_ALTA': 'Muy alta (>10000)',
             'SIN_DATOS': 'Sin datos'
         };
 
-        function getColorByValue(value, min, max) {
-            const t = Math.max(0, Math.min(1, (value - min) / (max - min || 1)));
-            const r = Math.round(247 - 42 * t);
-            const g = Math.round(252 - 158 * t);
-            const b = Math.round(253 - 95 * t);
-            return `rgb(${r}, ${g}, ${b})`;
+        const variableLabels = {
+            'CAT_DENS': 'Categoría de densidad',
+            'DENS_POB': 'Densidad poblacional (hab/km²)',
+            'VIV_OCUP': 'Viviendas ocupadas',
+            'PORC_OCU': '% Ocupación',
+            'PERS_VIV': 'Personas por vivienda ocupada'
+        };
+
+        const descripcionIndicador = {
+            'CAT_DENS': 'Clasificación del territorio según densidad poblacional (hab/km²).',
+            'DENS_POB': 'Número de habitantes por kilómetro cuadrado.',
+            'VIV_OCUP': 'Cantidad de viviendas actualmente habitadas.',
+            'PORC_OCU': 'Porcentaje de viviendas ocupadas respecto al total.',
+            'PERS_VIV': 'Promedio de personas por vivienda ocupada.'
+        };
+
+        function getColorByValue(variable, value, min, max) {
+            if (isNaN(value) || value === null) return '#b0b0b0';
+            
+            if (variable === 'CAT_DENS') {
+                return catColors[value] || '#b0b0b0';
+            }
+
+            // Paleta para variables numéricas (verde)
+            const palette = ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
+            const t = (value - min) / (max - min + 0.0001);
+            const index = Math.min(Math.floor(t * palette.length), palette.length - 1);
+            return palette[index];
         }
 
-        // ----------------------------------------------------------------
-        // 4. EXTRAER PUNTOS PARA MAPA DE CALOR
-        // ----------------------------------------------------------------
-        function extractHeatData(data, variable) {
-            let heatPoints = [];
-            let maxVal = -Infinity, minVal = Infinity;
-
-            data.features.forEach(feature => {
-                let val = parseFloat(feature.properties[variable]);
-
-                if (variable === 'CAT_DENS') {
-                    const catOrder = { 'MUY_BAJA': 1, 'BAJA': 2, 'MEDIA': 3, 'ALTA': 4, 'MUY_ALTA': 5 };
-                    val = catOrder[feature.properties[variable]] || 0;
+        function getRangoIndex(variable, value) {
+            if (isNaN(value) || value === null) return 0;
+            if (variable === 'DENS_POB') {
+                const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
+                for (let i = 0; i < limites.length - 1; i++) {
+                    if (value >= limites[i] && value < limites[i + 1]) return i;
                 }
-
-                if (isNaN(val) || val === null) val = 0;
-
-                let center;
-                try {
-                    const centroid = turf.centroid(feature);
-                    center = centroid.geometry.coordinates;
-                } catch (e) {
-                    return;
-                }
-
-                if (val > maxVal) maxVal = val;
-                if (val < minVal) minVal = val;
-
-                heatPoints.push({ lat: center[1], lng: center[0], count: val });
-            });
-
-            return {
-                max: maxVal === -Infinity ? 100 : maxVal,
-                min: minVal === Infinity ? 0 : minVal,
-                data: heatPoints
-            };
+                return limites.length - 2;
+            }
+            return 0;
         }
 
-        // ----------------------------------------------------------------
-        // 5. LEYENDA DINÁMICA
-        // ----------------------------------------------------------------
-        function updateLegend(variable, data) {
-            const legendDiv = document.getElementById('legend');
-            let html = '<div style="font-weight:600;margin-bottom:6px;color:#2c3e50;">Leyenda</div>';
+        // ================================================================
+        // 4. FUNCIONES DE FILTROS
+        // ================================================================
+        function getFiltros() {
+            const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
+            const activos = {};
+            checkboxes.forEach(cb => { activos[cb.value] = cb.checked; });
+            return activos;
+        }
 
-            if (currentMode === 'heatmap') {
-                const heatData = extractHeatData(data, variable);
-                html += `
-                    <div class="gradient-bar"></div>
-                    <div class="gradient-labels">
-                        <span>Bajo (${heatData.min.toFixed(1)})</span>
-                        <span>Alto (${heatData.max.toFixed(1)})</span>
-                    </div>
-                `;
-            } else {
+        function aplicarFiltros(features, variable) {
+            const activos = getFiltros();
+            const algunActivo = Object.values(activos).some(v => v === true);
+            if (!algunActivo) return [];
+
+            return features.filter(f => {
+                let key;
                 if (variable === 'CAT_DENS') {
-                    const categories = ['MUY_BAJA', 'BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
-                    for (const cat of categories) {
-                        html += `
-                            <div class="legend-item">
-                                <div class="legend-color" style="background:${catColors[cat]};"></div>
-                                <span class="legend-text">${catLabels[cat]}</span>
-                            </div>
-                        `;
-                    }
+                    key = f.properties[variable] || 'SIN_DATOS';
+                    return activos[key] !== false;
                 } else {
-                    let values = [];
-                    for (const feature of data.features) {
-                        const val = parseFloat(feature.properties[variable]);
-                        if (!isNaN(val) && val !== null) values.push(val);
-                    }
-                    if (values.length === 0) {
-                        html += '<div class="legend-item">Sin datos disponibles</div>';
-                    } else {
-                        const min = Math.min(...values);
-                        const max = Math.max(...values);
-                        const steps = 5;
-                        const step = (max - min) / steps;
-                        for (let i = 0; i < steps; i++) {
-                            const low = min + i * step;
-                            const high = min + (i + 1) * step;
-                            const color = getColorByValue(low, min, max);
-                            html += `
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background:${color};"></div>
-                                    <span class="legend-text">${low.toFixed(1)} – ${high.toFixed(1)}</span>
-                                </div>
-                            `;
-                        }
-                    }
+                    const val = parseFloat(f.properties[variable]);
+                    if (isNaN(val) || val === null) return false;
+                    const index = getRangoIndex(variable, val);
+                    key = `rango_${index}`;
+                    return activos[key] !== false;
+                }
+            });
+        }
+
+        // ================================================================
+        // 5. CONSTRUIR FILTROS
+        // ================================================================
+        function construirFiltros(variable) {
+            const container = document.getElementById('filtros-container');
+            let html = '';
+
+            if (variable === 'CAT_DENS') {
+                const items = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                html = `<h4>🔍 Filtrar por categoría:</h4>
+                    <div class="select-all-container">
+                        <button onclick="toggleAllFiltros(true)">✅ Todo</button>
+                        <button onclick="toggleAllFiltros(false)">❌ Nada</button>
+                    </div>`;
+                for (const key of items) {
+                    const checked = filtrosActivos[key] !== false;
+                    html += `<label class="filtro-checkbox">
+                        <input type="checkbox" value="${key}" ${checked ? 'checked' : ''} />
+                        <span class="color-muestra" style="background:${catColors[key]};"></span>
+                        <span>${catLabels[key]}</span>
+                        <span class="count-badge" id="count-${key}">0</span>
+                    </label>`;
+                }
+            } else {
+                let stepCount = 5;
+                let nombresRango = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+                if (variable === 'DENS_POB') {
+                    stepCount = 6;
+                    nombresRango = ['Muy baja (<100)', 'Baja (100-500)', 'Media-Baja (500-2000)',
+                        'Media (2000-5000)', 'Alta (5000-10000)', 'Muy alta (>10000)'];
+                }
+                html = `<h4>🔍 Filtrar por rango:</h4>
+                    <div class="select-all-container">
+                        <button onclick="toggleAllFiltros(true)">✅ Todo</button>
+                        <button onclick="toggleAllFiltros(false)">❌ Nada</button>
+                    </div>`;
+                for (let i = 0; i < stepCount; i++) {
+                    const key = `rango_${i}`;
+                    const checked = filtrosActivos[key] !== false;
+                    html += `<label class="filtro-checkbox">
+                        <input type="checkbox" value="${key}" ${checked ? 'checked' : ''} />
+                        <span class="color-muestra" style="background:${getColorByValue(variable, i / stepCount, 0, 1)};"></span>
+                        <span>${nombresRango[i]}</span>
+                        <span class="count-badge" id="count-${key}">0</span>
+                    </label>`;
                 }
             }
-            legendDiv.innerHTML = html;
+
+            html += `<button class="btn-reset-filtros" onclick="resetFiltros()">🔄 Restablecer filtros</button>`;
+            container.innerHTML = html;
+
+            document.querySelectorAll('.filtro-checkbox input[type="checkbox"]').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    filtrosActivos[this.value] = this.checked;
+                    updateMap();
+                });
+            });
+
+            actualizarContadores();
         }
 
-        // ----------------------------------------------------------------
-        // 6. ACTUALIZAR MAPA Y POLÍGONOS
-        // ----------------------------------------------------------------
+        function actualizarContadores() {
+            const variable = currentVariable;
+            if (variable === 'CAT_DENS') {
+                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                for (const cat of categories) {
+                    const count = allFeatures.filter(f => (f.properties['CAT_DENS'] || 'SIN_DATOS') === cat).length;
+                    const el = document.getElementById(`count-${cat}`);
+                    if (el) el.textContent = count;
+                }
+            } else {
+                let stepCount = 5;
+                if (variable === 'DENS_POB') stepCount = 6;
+                for (let i = 0; i < stepCount; i++) {
+                    const key = `rango_${i}`;
+                    const count = allFeatures.filter(f => {
+                        const val = parseFloat(f.properties[variable]);
+                        if (isNaN(val) || val === null) return false;
+                        const index = getRangoIndex(variable, val);
+                        return index === i;
+                    }).length;
+                    const el = document.getElementById(`count-${key}`);
+                    if (el) el.textContent = count;
+                }
+            }
+        }
+
+        function toggleAllFiltros(estado) {
+            const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = estado;
+                filtrosActivos[cb.value] = estado;
+            });
+            updateMap();
+        }
+
+        function resetFiltros() {
+            const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+                filtrosActivos[cb.value] = true;
+            });
+            document.getElementById('searchInput').value = '';
+            if (geoJsonData) {
+                const bounds = L.geoJSON(geoJsonData).getBounds();
+                if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
+            }
+            updateMap();
+        }
+
+        // ================================================================
+        // 6. BUSCADOR
+        // ================================================================
+        function buscarPoligonos() {
+            const texto = document.getElementById('searchInput').value.toLowerCase().trim();
+            if (!texto || !geoJsonData) return;
+
+            const encontrados = allFeatures.filter(f => {
+                const prov = (f.properties.PROVINCIA || '').toLowerCase();
+                const dist = (f.properties.DISTRITO || '').toLowerCase();
+                return prov.includes(texto) || dist.includes(texto);
+            });
+
+            if (encontrados.length === 0) {
+                alert('No se encontraron polígonos con: ' + texto);
+                return;
+            }
+
+            const geoJsonEncontrados = {
+                type: 'FeatureCollection',
+                features: encontrados
+            };
+
+            // Eliminar capa actual
+            if (currentLayer) map.removeLayer(currentLayer);
+
+            // Crear capa temporal con los resultados
+            currentLayer = L.geoJSON(geoJsonEncontrados, {
+                style: function(feature) {
+                    let value = feature.properties[currentVariable];
+                    let color = '#b0b0b0';
+                    if (currentVariable === 'CAT_DENS') {
+                        color = catColors[value] || '#b0b0b0';
+                    } else {
+                        const numVal = parseFloat(value);
+                        if (!isNaN(numVal) && numVal !== null) {
+                            const min = 0, max = 1;
+                            color = getColorByValue(currentVariable, numVal, min, max);
+                        }
+                    }
+                    return { fillColor: color, weight: 2, opacity: 0.9, color: '#000000', fillOpacity: 0.85 };
+                },
+                onEachFeature: function(feature, layer) {
+                    const p = feature.properties;
+                    const areaM2 = p.AREA || 0;
+                    const areaKm2 = areaM2 / 1000000;
+                    layer.bindPopup(crearPopup(p));
+                }
+            }).addTo(map);
+
+            const bounds = L.geoJSON(geoJsonEncontrados).getBounds();
+            if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+            document.getElementById('count-mostrados').textContent = encontrados.length;
+            document.getElementById('count-total').textContent = allFeatures.length;
+            document.getElementById('info-value').textContent = `🔍 Resultados: ${encontrados.length} polígonos`;
+        }
+
+        // ================================================================
+        // 7. POPUP
+        // ================================================================
+        function crearPopup(p) {
+            const areaM2 = p.AREA || 0;
+            const areaKm2 = areaM2 / 1000000;
+            return `<div style="font-family:'Segoe UI',sans-serif;min-width:170px;max-width:240px;font-size:11px;">
+                <h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:12px;">${p.PROVINCIA || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
+                ${p.BARR_NOMB ? `<div style="font-size:10px;color:#666;margin-bottom:2px;">📍 ${p.BARR_NOMB}</div>` : ''}
+                <hr style="margin:3px 0;border:0;border-top:1px solid #ddd;">
+                <table style="width:100%;font-size:10px;line-height:1.4;">
+                    <tr><td><strong>Viviendas:</strong></td><td>${p.VIVIENDA || 0}</td></tr>
+                    <tr><td><strong>Personas:</strong></td><td>${p.V_PERSONAS || 0}</td></tr>
+                    <tr><td><strong>Ocupadas:</strong></td><td>${p.VIV_OCUP || 0}</td></tr>
+                    <tr><td><strong>% Ocupación:</strong></td><td>${p.PORC_OCU ? p.PORC_OCU.toFixed(1) : 0}%</td></tr>
+                    <tr><td><strong>Densidad:</strong></td><td>${p.DENS_POB ? p.DENS_POB.toFixed(1) : 0} hab/km²</td></tr>
+                    <tr><td><strong>Pers./viv. ocupada:</strong></td><td>${p.PERS_VIV ? p.PERS_VIV.toFixed(2) : 0}</td></tr>
+                    <tr><td><strong>Categoría:</strong></td><td>${p.CAT_DENS || 'Sin datos'}</td></tr>
+                    <tr><td><strong>Área:</strong></td><td>${areaKm2.toFixed(2)} km² (${areaM2.toFixed(0)} m²)</td></tr>
+                </table>
+            </div>`;
+        }
+
+        // ================================================================
+        // 8. EXPORTAR CSV
+        // ================================================================
+        function exportarCSV() {
+            if (!geoJsonData || allFeatures.length === 0) {
+                alert('No hay datos para exportar');
+                return;
+            }
+
+            const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
+            const headers = ['PROVINCIA', 'DISTRITO', 'BARR_NOMB', 'VIVIENDA', 'V_PERSONAS',
+                'VIV_OCUP', 'PORC_OCU', 'DENS_POB', 'PERS_VIV', 'CAT_DENS', 'AREA_KM2'
+            ];
+
+            const rows = features.map(f => {
+                const p = f.properties;
+                return [
+                    p.PROVINCIA || '', p.DISTRITO || '', p.BARR_NOMB || '',
+                    p.VIVIENDA || 0, p.V_PERSONAS || 0, p.VIV_OCUP || 0,
+                    p.PORC_OCU ? p.PORC_OCU.toFixed(1) : 0,
+                    p.DENS_POB ? p.DENS_POB.toFixed(1) : 0,
+                    p.PERS_VIV ? p.PERS_VIV.toFixed(2) : 0,
+                    p.CAT_DENS || '',
+                    ((p.AREA || 0) / 1000000).toFixed(4)
+                ];
+            });
+
+            let csv = headers.join(',') + '\n';
+            rows.forEach(row => { csv += row.join(',') + '\n'; });
+
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `datos_socioeconomicos_${currentVariable}.csv`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        // ================================================================
+        // 9. ESTADÍSTICAS
+        // ================================================================
+        function mostrarEstadisticas() {
+            document.getElementById('statsModal').classList.add('active');
+            const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
+            const variable = currentVariable;
+            document.getElementById('statsTitle').textContent = `📊 Estadísticas: ${variableLabels[variable] || variable}`;
+
+            let labels = [], data = [], colors = [];
+
+            if (variable === 'CAT_DENS') {
+                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                const counts = {};
+                categories.forEach(c => counts[c] = 0);
+                features.forEach(f => {
+                    const cat = f.properties[variable] || 'SIN_DATOS';
+                    counts[cat] = (counts[cat] || 0) + 1;
+                });
+                labels = categories.map(c => catLabels[c] || c);
+                data = categories.map(c => counts[c] || 0);
+                colors = categories.map(c => catColors[c] || '#b0b0b0');
+            } else {
+                const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
+                if (valores.length > 0) {
+                    const min = Math.min(...valores), max = Math.max(...valores);
+                    const steps = 5, step = (max - min) / steps;
+                    const counts = new Array(steps).fill(0);
+                    valores.forEach(v => {
+                        const idx = Math.min(Math.floor((v - min) / step), steps - 1);
+                        counts[idx]++;
+                    });
+                    labels = counts.map((_, i) => `${(min + i * step).toFixed(1)}-${(min + (i + 1) * step).toFixed(1)}`);
+                    data = counts;
+                    colors = ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
+                }
+            }
+
+            // Estadísticas numéricas
+            const statsDiv = document.getElementById('statsNumbers');
+            let statsHTML = '';
+            if (variable !== 'CAT_DENS') {
+                const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
+                if (valores.length > 0) {
+                    const sum = valores.reduce((a, b) => a + b, 0);
+                    const mean = sum / valores.length;
+                    const sorted = [...valores].sort((a, b) => a - b);
+                    const median = sorted.length % 2 === 0 ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2 :
+                        sorted[Math.floor(sorted.length / 2)];
+                    statsHTML = `
+                        <div class="stat-item"><span class="num">${valores.length}</span><div class="label">Registros</div></div>
+                        <div class="stat-item"><span class="num">${mean.toFixed(2)}</span><div class="label">Promedio</div></div>
+                        <div class="stat-item"><span class="num">${median.toFixed(2)}</span><div class="label">Mediana</div></div>
+                        <div class="stat-item"><span class="num">${sorted[0].toFixed(2)} - ${sorted[sorted.length-1].toFixed(2)}</span><div class="label">Mín - Máx</div></div>
+                    `;
+                }
+            } else {
+                const total = data.reduce((a, b) => a + b, 0);
+                statsHTML = `
+                    <div class="stat-item"><span class="num">${total}</span><div class="label">Total polígonos</div></div>
+                    <div class="stat-item"><span class="num">${data.filter(d => d > 0).length}</span><div class="label">Categorías con datos</div></div>
+                `;
+            }
+            statsDiv.innerHTML = statsHTML;
+
+            // Gráfico
+            if (chartInstance) chartInstance.destroy();
+            const ctx = document.getElementById('statsChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels, datasets: [{ label: 'Polígonos', data: data, backgroundColor: colors, borderWidth: 1 }] },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { font: { size: 9 } } },
+                        x: { ticks: { font: { size: 8 }, maxRotation: 30 } } }
+                }
+            });
+        }
+
+        function closeStats() {
+            document.getElementById('statsModal').classList.remove('active');
+            if (chartInstance) { chartInstance.destroy();
+                chartInstance = null; }
+        }
+
+        // ================================================================
+        // 10. ACTUALIZAR MAPA
+        // ================================================================
         function updateMap() {
             if (!geoJsonData) return;
 
             const variable = currentVariable;
+            const featuresFiltradas = aplicarFiltros(allFeatures, variable);
+            currentFeaturesFiltradas = featuresFiltradas;
 
-            // Limpiar capa GeoJSON previa
+            document.getElementById('count-mostrados').textContent = featuresFiltradas.length;
+            document.getElementById('count-total').textContent = allFeatures.length;
+
+            // Limpiar capa anterior
             if (currentLayer) map.removeLayer(currentLayer);
 
-            // Min/Max para variables numéricas
-            let minVal = Infinity, maxVal = -Infinity;
-            if (variable !== 'CAT_DENS') {
-                for (const feature of geoJsonData.features) {
-                    const val = parseFloat(feature.properties[variable]);
-                    if (!isNaN(val) && val !== null) {
-                        if (val < minVal) minVal = val;
-                        if (val > maxVal) maxVal = val;
-                    }
-                }
-                if (minVal === Infinity) minVal = 0;
-                if (maxVal === -Infinity) maxVal = 1;
-            }
-
-            // Modo Calor
+            // Modo Heatmap
             if (currentMode === 'heatmap') {
-                const heatData = extractHeatData(geoJsonData, variable);
+                // Preparar datos para heatmap
+                const heatData = { max: 100, data: [] };
+                let maxVal = -Infinity;
+
+                featuresFiltradas.forEach(f => {
+                    let val = parseFloat(f.properties[variable]);
+                    if (variable === 'CAT_DENS') {
+                        const catOrder = { 'MUY_BAJA': 1, 'BAJA': 2, 'MEDIA_BAJA': 3, 'MEDIA': 4, 'ALTA': 5, 'MUY_ALTA': 6 };
+                        val = catOrder[f.properties[variable]] || 0;
+                    }
+                    if (isNaN(val) || val === null) return;
+
+                    // Calcular centroide con turf
+                    try {
+                        const centroid = turf.centroid(f);
+                        const coords = centroid.geometry.coordinates;
+                        if (val > maxVal) maxVal = val;
+                        heatData.data.push({ lat: coords[1], lng: coords[0], count: val });
+                    } catch (e) {}
+                });
+
+                heatData.max = maxVal === -Infinity ? 100 : maxVal;
+                map.removeLayer(heatmapLayer);
+                heatmapLayer = new HeatmapOverlay(heatmapConfig);
+                map.addLayer(heatmapLayer);
                 heatmapLayer.setData(heatData);
-            } else {
-                heatmapLayer.setData({ max: 0, data: [] }); // Ocultar calor
+
+                // Mostrar polígonos transparentes
+                currentLayer = L.geoJSON(geoJsonData, {
+                    style: {
+                        fillColor: 'transparent',
+                        fillOpacity: 0.01,
+                        color: 'rgba(255,255,255,0.3)',
+                        weight: 1
+                    },
+                    onEachFeature: function(feature, layer) {
+                        layer.bindPopup(crearPopup(feature.properties));
+                    }
+                }).addTo(map);
+
+                document.getElementById('legend').innerHTML = `
+                    <div class="legend-title">🔥 Mapa de Calor</div>
+                    <div class="gradient-bar"></div>
+                    <div class="gradient-labels">
+                        <span>Bajo (${heatData.data.length > 0 ? Math.min(...heatData.data.map(d => d.count)).toFixed(1) : 0})</span>
+                        <span>Alto (${heatData.max.toFixed(1)})</span>
+                    </div>
+                    <div class="legend-desc">💡 Intensidad: ${variableLabels[variable] || variable}</div>
+                `;
+
+                document.getElementById('info-label').textContent = variableLabels[variable] || variable;
+                document.getElementById('info-value').textContent = `${featuresFiltradas.length} puntos en calor`;
+                return;
             }
 
-            // Crear capa GeoJSON
-            currentLayer = L.geoJSON(geoJsonData, {
-                style: function(feature) {
-                    if (currentMode === 'heatmap') {
-                        return {
-                            fillColor: 'transparent',
-                            fillOpacity: 0.01,
-                            color: 'rgba(255,255,255,0.4)',
-                            weight: 1
-                        };
+            // Modo Polígonos
+            const minMax = { min: 0, max: 1 };
+            if (variable !== 'CAT_DENS') {
+                let min = Infinity, max = -Infinity;
+                featuresFiltradas.forEach(f => {
+                    const val = parseFloat(f.properties[variable]);
+                    if (!isNaN(val) && val !== null) {
+                        if (val < min) min = val;
+                        if (val > max) max = val;
                     }
+                });
+                if (min !== Infinity) { minMax.min = min;
+                    minMax.max = max; }
+            }
 
+            currentLayer = L.geoJSON({
+                type: 'FeatureCollection',
+                features: featuresFiltradas
+            }, {
+                style: function(feature) {
                     let value = feature.properties[variable];
                     let color = '#cccccc';
-
                     if (variable === 'CAT_DENS') {
                         color = catColors[value] || '#cccccc';
                     } else {
                         const numVal = parseFloat(value);
                         if (!isNaN(numVal) && numVal !== null) {
-                            color = getColorByValue(numVal, minVal, maxVal);
+                            color = getColorByValue(variable, numVal, minMax.min, minMax.max);
                         }
                     }
-
-                    return {
-                        fillColor: color,
-                        weight: 1,
-                        opacity: 0.7,
-                        color: 'white',
-                        fillOpacity: 0.8
-                    };
+                    return { fillColor: color, weight: 1, opacity: 0.8, color: '#333333', fillOpacity: 0.8 };
                 },
                 onEachFeature: function(feature, layer) {
-                    const props = feature.properties;
-                    const prov = props.PROV_NOMB || props.PROVINCIA || '';
-                    const popupContent = `
-                        <div style="font-family:'Segoe UI',sans-serif;min-width:200px;">
-                            <h4 style="margin:0 0 6px 0;color:#1a2a3a;">${prov} - ${props.DISTRITO || ''}</h4>
-                            <hr style="margin:4px 0;border:0;border-top:1px solid #ddd;">
-                            <table style="width:100%;font-size:13px;">
-                                <tr><td><strong>Viviendas:</strong></td><td>${props.VIVIENDA || 0}</td></tr>
-                                <tr><td><strong>Personas:</strong></td><td>${props.V_PERSONAS || 0}</td></tr>
-                                <tr><td><strong>Ocupadas:</strong></td><td>${props.VIV_OCUP || 0}</td></tr>
-                                <tr><td><strong>% Ocupación:</strong></td><td>${props.PORC_OCU || 0}%</td></tr>
-                                <tr><td><strong>Densidad:</strong></td><td>${props.DENS_POB ? props.DENS_POB.toFixed(1) : 0} hab/km²</td></tr>
-                                <tr><td><strong>Pers./viv. ocupada:</strong></td><td>${props.PERS_VIV ? props.PERS_VIV.toFixed(2) : 0}</td></tr>
-                                <tr><td><strong>Categoría:</strong></td><td>${props.CAT_DENS || 'Sin datos'}</td></tr>
-                            </table>
-                        </div>
-                    `;
-                    layer.bindPopup(popupContent);
-
+                    layer.bindPopup(crearPopup(feature.properties));
                     layer.on('mouseover', function() {
-                        this.setStyle({ weight: 3, color: '#222', fillOpacity: currentMode === 'heatmap' ? 0.2 : 0.9 });
+                        this.setStyle({ weight: 2.5, color: '#000000', fillOpacity: 0.95 });
                         this.bringToFront();
                     });
-
                     layer.on('mouseout', function() {
-                        if (currentMode === 'heatmap') {
-                            this.setStyle({ weight: 1, color: 'rgba(255,255,255,0.4)', fillOpacity: 0.01 });
+                        const value = this.feature.properties[variable];
+                        let color = '#cccccc';
+                        if (variable === 'CAT_DENS') {
+                            color = catColors[value] || '#cccccc';
                         } else {
-                            const value = this.feature.properties[variable];
-                            let color = '#cccccc';
-                            if (variable === 'CAT_DENS') {
-                                color = catColors[value] || '#cccccc';
-                            } else {
-                                const numVal = parseFloat(value);
-                                if (!isNaN(numVal) && numVal !== null) {
-                                    color = getColorByValue(numVal, minVal, maxVal);
-                                }
+                            const numVal = parseFloat(value);
+                            if (!isNaN(numVal) && numVal !== null) {
+                                color = getColorByValue(variable, numVal, minMax.min, minMax.max);
                             }
-                            this.setStyle({ weight: 1, color: 'white', fillColor: color, fillOpacity: 0.8 });
                         }
+                        this.setStyle({ weight: 1, color: '#333333', fillColor: color, fillOpacity: 0.8 });
                     });
                 }
             }).addTo(map);
 
-            // Actualizar leyenda e info box
-            updateLegend(variable, geoJsonData);
-            document.getElementById('info-label').innerText = 
-                document.querySelector(`#variable-select option[value="${variable}"]`).textContent;
-            document.getElementById('info-value').innerText = 'Clic en un polígono para ver detalles';
+            updateLegend(variable, featuresFiltradas);
+            document.getElementById('info-label').textContent = variableLabels[variable] || variable;
+            document.getElementById('info-value').textContent = 'Clic en un polígono para detalles';
         }
 
-        // ----------------------------------------------------------------
-        // 7. CARGAR GEOJSON
-        // ----------------------------------------------------------------
+        // ================================================================
+        // 11. LEYENDA
+        // ================================================================
+        function updateLegend(variable, features) {
+            const legendDiv = document.getElementById('legend');
+            let html = `<div class="legend-title">Leyenda</div>`;
+
+            if (variable === 'CAT_DENS') {
+                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                for (const cat of categories) {
+                    html += `<div class="legend-item">
+                        <div class="legend-color" style="background:${catColors[cat]};"></div>
+                        <span class="legend-text">${catLabels[cat]}</span>
+                    </div>`;
+                }
+            } else {
+                const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
+                if (valores.length > 0) {
+                    const min = Math.min(...valores), max = Math.max(...valores);
+                    const steps = 5, step = (max - min) / steps;
+                    for (let i = 0; i < steps; i++) {
+                        const low = min + i * step;
+                        const high = min + (i + 1) * step;
+                        const color = getColorByValue(variable, (low + high) / 2, min, max);
+                        html += `<div class="legend-item">
+                            <div class="legend-color" style="background:${color};"></div>
+                            <span class="legend-text">${low.toFixed(1)} – ${high.toFixed(1)}</span>
+                        </div>`;
+                    }
+                }
+            }
+
+            const desc = descripcionIndicador[variable] || '';
+            if (desc) html += `<div class="legend-desc">💡 ${desc}</div>`;
+            legendDiv.innerHTML = html;
+        }
+
+        // ================================================================
+        // 12. CARGA DEL GEOJSON
+        // ================================================================
         async function loadGeoJSON() {
             try {
                 const response = await fetch('vivienda_2023.geojson');
-                if (!response.ok) throw new Error('Error al cargar GeoJSON: ' + response.status);
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const data = await response.json();
+                geoJsonData = data;
+                allFeatures = data.features;
+                console.log('✅ GeoJSON cargado:', allFeatures.length, 'features');
 
-                geoJsonData = await response.json();
-                currentVariable = document.getElementById('variable-select').value;
+                // Inicializar filtros
+                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                for (const cat of categories) filtrosActivos[cat] = true;
+                for (let i = 0; i < 6; i++) filtrosActivos[`rango_${i}`] = true;
+
+                const variable = document.getElementById('variable-select').value;
+                currentVariable = variable;
+                construirFiltros(variable);
                 updateMap();
 
-                const bounds = L.geoJSON(geoJsonData).getBounds();
-                map.fitBounds(bounds, { padding: [20, 20] });
-
+                const bounds = L.geoJSON(data).getBounds();
+                if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
             } catch (error) {
-                console.error('Error:', error);
+                console.error('❌ Error:', error);
                 document.getElementById('info-box').innerHTML = `
-                    <div style="color:red;font-weight:bold;">Error al cargar los datos.</div>
-                    <div style="font-size:12px;margin-top:6px;">${error.message}</div>
-                    <div style="font-size:12px;margin-top:6px;">Asegúrate de ejecutar en un servidor local (Live Server/HTTP).</div>
+                    <div style="color:#b94a4a;font-weight:bold;">⚠️ Error al cargar los datos</div>
+                    <div style="font-size:10px;margin-top:2px;">${error.message}</div>
+                    <div style="font-size:10px;margin-top:2px;">Asegúrate de que <strong>vivienda_2023.geojson</strong> esté en la misma carpeta.</div>
                 `;
             }
         }
 
-        // ----------------------------------------------------------------
-        // 8. EVENTOS Y CONTROLES
-        // ----------------------------------------------------------------
-        // Selector de Variable
+        // ================================================================
+        // 13. EVENTOS
+        // ================================================================
         document.getElementById('variable-select').addEventListener('change', function(e) {
             currentVariable = e.target.value;
+            document.getElementById('searchInput').value = '';
+            construirFiltros(currentVariable);
             updateMap();
         });
 
-        // Cambio de Modo (Polígonos vs Calor)
+        document.getElementById('map-select').addEventListener('change', function(e) {
+            const value = e.target.value;
+            map.removeLayer(satelliteLayer);
+            map.removeLayer(osmLayer);
+            map.removeLayer(topoLayer);
+            if (value === 'satellite') satelliteLayer.addTo(map);
+            else if (value === 'osm') osmLayer.addTo(map);
+            else if (value === 'topo') topoLayer.addTo(map);
+        });
+
+        // Modo Polígonos
         document.getElementById('btn-polygon').addEventListener('click', function() {
             currentMode = 'polygon';
             this.classList.add('active');
             document.getElementById('btn-heatmap').classList.remove('active');
             document.getElementById('heatmap-controls').style.display = 'none';
+            if (heatmapLayer) map.removeLayer(heatmapLayer);
             updateMap();
         });
 
+        // Modo Calor
         document.getElementById('btn-heatmap').addEventListener('click', function() {
             currentMode = 'heatmap';
             this.classList.add('active');
@@ -559,25 +1170,48 @@
             updateMap();
         });
 
-        // Controles de Radio y Difuminado para Calor
+        // Controles de calor
         document.getElementById('radius-slider').addEventListener('input', function(e) {
             const val = e.target.value;
             document.getElementById('radius-val').innerText = val;
-            heatmapLayer.cfg.radius = parseInt(val);
-            heatmapLayer._heatmap.configure(heatmapLayer.cfg);
-            heatmapLayer._update();
+            heatmapConfig.radius = parseInt(val);
+            if (heatmapLayer) {
+                heatmapLayer.configure(heatmapConfig);
+                heatmapLayer._update();
+            }
         });
 
         document.getElementById('blur-slider').addEventListener('input', function(e) {
             const val = e.target.value;
             document.getElementById('blur-val').innerText = val;
-            heatmapLayer.cfg.blur = parseFloat(val / 40);
-            heatmapLayer._heatmap.configure(heatmapLayer.cfg);
-            heatmapLayer._update();
+            heatmapConfig.blur = parseFloat(val / 40);
+            if (heatmapLayer) {
+                heatmapLayer.configure(heatmapConfig);
+                heatmapLayer._update();
+            }
         });
 
-        // Cargar datos al iniciar
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') buscarPoligonos();
+        });
+
+        document.getElementById('statsModal').addEventListener('click', function(e) {
+            if (e.target === this) closeStats();
+        });
+
+        window.toggleAllFiltros = toggleAllFiltros;
+        window.resetFiltros = resetFiltros;
+        window.buscarPoligonos = buscarPoligonos;
+        window.exportarCSV = exportarCSV;
+        window.mostrarEstadisticas = mostrarEstadisticas;
+        window.closeStats = closeStats;
+
+        // ================================================================
+        // 14. INICIO
+        // ================================================================
         loadGeoJSON();
+        console.log('🗺️ Mapa interactivo iniciado – RAUL VIQUEZ');
     </script>
+
 </body>
 </html>
