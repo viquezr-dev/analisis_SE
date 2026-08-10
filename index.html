@@ -951,35 +951,37 @@
         // 7. FILTROS
         // ================================================================
         function getFiltros() {
-                const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
-                const activos = {};
-                checkboxes.forEach(cb => {
-                    const valor = cb.value;
-                    activos[valor] = cb.checked;
-                });
-                return activos;
-            }
-            
-            function aplicarFiltros(features, variable) {
-                const activos = getFiltros();
-                // Verificar si al menos un filtro está activo
-                const algunActivo = Object.values(activos).some(v => v === true);
-                if (!algunActivo) return [];
-            
-                return features.filter(f => {
-                    let key;
-                    if (variable === 'CAT_DENS') {
-                        key = f.properties[variable] || 'SIN_DATOS';
-                        return activos[key] !== false;
-                    } else {
-                        const val = parseFloat(f.properties[variable]);
-                        if (isNaN(val) || val === null) return false;
-                        const index = getRangoIndex(variable, val);
-                        key = `rango_${index}`;
-                        return activos[key] !== false;
-                    }
-                });
-            }
+            const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
+            const activos = {};
+            checkboxes.forEach(cb => {
+                // Usar el value directamente como clave
+                const valor = cb.value;
+                activos[valor] = cb.checked;
+            });
+            return activos;
+        }
+        
+        function aplicarFiltros(features, variable) {
+            const activos = getFiltros();
+            // Verificar si al menos un filtro está activo
+            const algunActivo = Object.values(activos).some(v => v === true);
+            if (!algunActivo) return [];
+        
+            return features.filter(f => {
+                let key;
+                if (variable === 'CAT_DENS') {
+                    key = f.properties[variable] || 'SIN_DATOS';
+                    return activos[key] !== false;
+                } else {
+                    const val = parseFloat(f.properties[variable]);
+                    if (isNaN(val) || val === null) return false;
+                    const index = getRangoIndex(variable, val);
+                    // Usar template string de forma explícita
+                    key = 'rango_' + index;
+                    return activos[key] !== false;
+                }
+            });
+        }
 
         // ================================================================
         // 8. ACTUALIZAR MAPA
@@ -1105,102 +1107,103 @@
         // 9. CONSTRUIR FILTROS
         // ================================================================
         function construirFiltros(variable) {
-                const container = document.getElementById('filtros-container');
-                let html = '';
-                let items = [];
-                let nombres = [];
-            
-                if (variable === 'CAT_DENS') {
-                    items = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
-                    nombres = items.map(c => catLabels[c]);
-                    html = `<h4>🔍 Filtrar por categoría:</h4>`;
-                    html += `<div class="select-all-container">
-                                <button onclick="toggleAllFiltros(true)">✅ Todo</button>
-                                <button onclick="toggleAllFiltros(false)">❌ Nada</button>
-                            </div>`;
-                    for (let i = 0; i < items.length; i++) {
-                        const key = items[i];
-                        const checked = filtrosActivos[key] !== false;
-                        html += `
-                                <label class="filtro-checkbox">
-                                    <input type="checkbox" value="${key}" ${checked ? 'checked' : ''} />
-                                    <span class="color-muestra" style="background:${catColors[key]};"></span>
-                                    <span>${nombres[i]}</span>
-                                    <span class="count-badge" id="count-${key}">0</span>
-                                </label>
-                            `;
-                    }
-                } else {
-                    // Variables numéricas con rangos fijos
-                    let stepCount = 5;
-                    let nombresRango = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
-            
+            const container = document.getElementById('filtros-container');
+            let html = '';
+            let items = [];
+            let nombres = [];
+        
+            if (variable === 'CAT_DENS') {
+                items = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+                nombres = items.map(c => catLabels[c]);
+                html = `<h4>🔍 Filtrar por categoría:</h4>`;
+                html += `<div class="select-all-container">
+                            <button onclick="toggleAllFiltros(true)">✅ Todo</button>
+                            <button onclick="toggleAllFiltros(false)">❌ Nada</button>
+                        </div>`;
+                for (let i = 0; i < items.length; i++) {
+                    const key = items[i];
+                    const checked = filtrosActivos[key] !== false;
+                    html += `
+                            <label class="filtro-checkbox">
+                                <input type="checkbox" value="${key}" ${checked ? 'checked' : ''} />
+                                <span class="color-muestra" style="background:${catColors[key]};"></span>
+                                <span>${nombres[i]}</span>
+                                <span class="count-badge" id="count-${key}">0</span>
+                            </label>
+                        `;
+                }
+            } else {
+                // Variables numéricas con rangos fijos
+                let stepCount = 5;
+                let nombresRango = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+        
+                if (variable === 'DENS_POB') {
+                    stepCount = 6;
+                    nombresRango = [
+                        'Muy baja (<100)',
+                        'Baja (100-500)',
+                        'Media-Baja (500-2000)',
+                        'Media (2000-5000)',
+                        'Alta (5000-10000)',
+                        'Muy alta (>10000)'
+                    ];
+                } else if (rangosFijos[variable]) {
+                    const r = rangosFijos[variable];
+                    stepCount = r.steps;
+                    nombresRango = r.nombres;
+                }
+        
+                html = `<h4>🔍 Filtrar por rango:</h4>`;
+                html += `<div class="select-all-container">
+                            <button onclick="toggleAllFiltros(true)">✅ Todo</button>
+                            <button onclick="toggleAllFiltros(false)">❌ Nada</button>
+                        </div>`;
+                for (let i = 0; i < stepCount; i++) {
+                    // Usar concatenación en lugar de template string para evitar problemas
+                    const key = 'rango_' + i;
+                    const checked = filtrosActivos[key] !== false;
+                    // Calcular color para la muestra
+                    let color;
                     if (variable === 'DENS_POB') {
-                        stepCount = 6;
-                        nombresRango = [
-                            'Muy baja (<100)',
-                            'Baja (100-500)',
-                            'Media-Baja (500-2000)',
-                            'Media (2000-5000)',
-                            'Alta (5000-10000)',
-                            'Muy alta (>10000)'
-                        ];
+                        const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
+                        const minVal = limites[i];
+                        const maxVal = limites[i + 1];
+                        const valorMedio = (minVal + maxVal) / 2;
+                        color = getColorByValue(variable, valorMedio, 0, 20000);
                     } else if (rangosFijos[variable]) {
                         const r = rangosFijos[variable];
-                        stepCount = r.steps;
-                        nombresRango = r.nombres;
+                        const minVal = r.min + (r.max - r.min) * (i / stepCount);
+                        const maxVal = r.min + (r.max - r.min) * ((i + 1) / stepCount);
+                        const valorMedio = (minVal + maxVal) / 2;
+                        color = getColorByValue(variable, valorMedio, r.min, r.max);
+                    } else {
+                        color = getColorByValue(variable, i / stepCount, 0, 1);
                     }
-            
-                    html = `<h4>🔍 Filtrar por rango:</h4>`;
-                    html += `<div class="select-all-container">
-                                <button onclick="toggleAllFiltros(true)">✅ Todo</button>
-                                <button onclick="toggleAllFiltros(false)">❌ Nada</button>
-                            </div>`;
-                    for (let i = 0; i < stepCount; i++) {
-                        const key = `rango_${i}`;
-                        const checked = filtrosActivos[key] !== false;
-                        // Calcular color para la muestra
-                        let color;
-                        if (variable === 'DENS_POB') {
-                            const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
-                            const minVal = limites[i];
-                            const maxVal = limites[i + 1];
-                            const valorMedio = (minVal + maxVal) / 2;
-                            color = getColorByValue(variable, valorMedio, 0, 20000);
-                        } else if (rangosFijos[variable]) {
-                            const r = rangosFijos[variable];
-                            const minVal = r.min + (r.max - r.min) * (i / stepCount);
-                            const maxVal = r.min + (r.max - r.min) * ((i + 1) / stepCount);
-                            const valorMedio = (minVal + maxVal) / 2;
-                            color = getColorByValue(variable, valorMedio, r.min, r.max);
-                        } else {
-                            color = getColorByValue(variable, i / stepCount, 0, 1);
-                        }
-                        html += `
-                                <label class="filtro-checkbox">
-                                    <input type="checkbox" value="${key}" ${checked ? 'checked' : ''} />
-                                    <span class="color-muestra" style="background:${color};"></span>
-                                    <span>${nombresRango[i]}</span>
-                                    <span class="count-badge" id="count-${key}">0</span>
-                                </label>
-                            `;
-                    }
+                    html += `
+                            <label class="filtro-checkbox">
+                                <input type="checkbox" value="${key}" ${checked ? 'checked' : ''} />
+                                <span class="color-muestra" style="background:${color};"></span>
+                                <span>${nombresRango[i]}</span>
+                                <span class="count-badge" id="count-${key}">0</span>
+                            </label>
+                        `;
                 }
-            
-                html += `<button class="btn-reset" onclick="resetFiltros()">🔄 Restablecer filtros</button>`;
-                container.innerHTML = html;
-            
-                // Asignar eventos a los checkboxes
-                document.querySelectorAll('.filtro-checkbox input[type="checkbox"]').forEach(cb => {
-                    cb.addEventListener('change', function() {
-                        filtrosActivos[this.value] = this.checked;
-                        updateMapWithFilters();
-                        actualizarContadores();
-                    });
-                });
-            
-                actualizarContadores();
             }
+        
+            html += `<button class="btn-reset" onclick="resetFiltros()">🔄 Restablecer filtros</button>`;
+            container.innerHTML = html;
+        
+            // Asignar eventos a los checkboxes
+            document.querySelectorAll('.filtro-checkbox input[type="checkbox"]').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    filtrosActivos[this.value] = this.checked;
+                    updateMapWithFilters();
+                    actualizarContadores();
+                });
+            });
+        
+            actualizarContadores();
+        }
 
         // ================================================================
         // 10. CONTADORES
@@ -1220,7 +1223,7 @@
                 else if (rangosFijos[variable]) stepCount = rangosFijos[variable].steps;
         
                 for (let i = 0; i < stepCount; i++) {
-                    const key = `rango_${i}`;
+                    const key = 'rango_' + i;
                     let count = 0;
         
                     if (variable === 'DENS_POB') {
