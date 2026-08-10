@@ -594,14 +594,59 @@
         }
 
         function getRangoIndex(variable, value) {
-            if (isNaN(value) || value === null) return 0;
+            if (isNaN(value) || value === null || value === 0) return 0;
+            
+            // ============================================================
+            // DENS_POB: Rangos específicos de densidad
+            // ============================================================
             if (variable === 'DENS_POB') {
                 const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
                 for (let i = 0; i < limites.length - 1; i++) {
-                    if (value >= limites[i] && value < limites[i + 1]) return i;
+                    if (value >= limites[i] && value < limites[i + 1]) {
+                        return i;
+                    }
                 }
                 return limites.length - 2;
             }
+            
+            // ============================================================
+            // VIV_OCUP: Viviendas ocupadas (0-8000)
+            // ============================================================
+            if (variable === 'VIV_OCUP') {
+                if (value < 1600) return 0;      // Muy bajo
+                if (value < 3200) return 1;      // Bajo
+                if (value < 4800) return 2;      // Medio
+                if (value < 6400) return 3;      // Alto
+                return 4;                         // Muy alto
+            }
+            
+            // ============================================================
+            // PORC_OCU: Porcentaje de ocupación (0-100)
+            // ============================================================
+            if (variable === 'PORC_OCU') {
+                if (value < 20) return 0;        // Muy bajo
+                if (value < 40) return 1;        // Bajo
+                if (value < 60) return 2;        // Medio
+                if (value < 80) return 3;        // Alto
+                return 4;                         // Muy alto
+            }
+            
+            // ============================================================
+            // PERS_VIV: Personas por vivienda ocupada (0-6)
+            // ============================================================
+            if (variable === 'PERS_VIV') {
+                if (value < 1.2) return 0;       // Muy bajo
+                if (value < 2.4) return 1;       // Bajo
+                if (value < 3.6) return 2;       // Medio
+                if (value < 4.8) return 3;       // Alto
+                return 4;                         // Muy alto
+            }
+            
+            // ============================================================
+            // OTRAS VARIABLES: Rango automático (fallback)
+            // ============================================================
+            // Para cualquier otra variable, dividir en 5 rangos iguales
+            // Usamos los valores mínimos y máximos de los datos
             return 0;
         }
 
