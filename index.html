@@ -507,20 +507,38 @@
         let currentFeaturesFiltradas = [];
         let currentMode = 'polygon';
         let heatmapLayer = null;
-
-        // Configurar capa de mapa de calor
-        const heatmapConfig = {
-            radius: 30,
-            maxOpacity: 0.8,
-            minOpacity: 0.05,
-            blur: 0.375,
-            scaleRadius: false,
-            useLocalExtrema: false,
-            latField: 'lat',
-            lngField: 'lng',
-            valueField: 'count'
-        };
-        heatmapLayer = new HeatmapOverlay(heatmapConfig);
+        let heatmapConfig = null;
+        
+        // ================================================================
+        // 3. INICIALIZAR HEATMAP (SEGUNDO PLANO)
+        // ================================================================
+        function initHeatmap() {
+            if (typeof HeatmapOverlay === 'undefined') {
+                console.warn('⚠️ HeatmapOverlay no está disponible. Reintentando...');
+                setTimeout(initHeatmap, 500);
+                return;
+            }
+            
+            heatmapConfig = {
+                radius: 30,
+                maxOpacity: 0.8,
+                minOpacity: 0.05,
+                blur: 0.375,
+                scaleRadius: false,
+                useLocalExtrema: false,
+                latField: 'lat',
+                lngField: 'lng',
+                valueField: 'count'
+            };
+            
+            heatmapLayer = new HeatmapOverlay(heatmapConfig);
+            console.log('✅ Heatmap inicializado correctamente');
+        }
+        
+        // Llamar a initHeatmap después de cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            initHeatmap();
+        });
 
         // ================================================================
         // 3. PALETAS DE COLORES
