@@ -860,11 +860,11 @@
         }
         
         function generarHeatmap() {
-            console.log('🔥 Generando heatmap con puntos...');
+            console.log('🔥 Generando heatmap con puntos (versión casera)...');
             
             // Verificar que los puntos estén cargados
             if (!geoJsonDataPuntos || !geoJsonDataPuntos.features || geoJsonDataPuntos.features.length === 0) {
-                alert('No se encontró el archivo de puntos (vivienda_2023_p.geojson).');
+                alert('No se encontró el archivo de puntos.');
                 toggleHeatmap();
                 return;
             }
@@ -874,20 +874,19 @@
                 map.removeLayer(currentLayer);
             }
             
-            // Usar los puntos filtrados (aplicar los mismos filtros que en polígonos)
             const featuresPuntos = geoJsonDataPuntos.features;
             const variable = currentVariable;
             
             console.log('📊 Puntos disponibles:', featuresPuntos.length);
             
-            // Preparar puntos [lat, lon, intensidad]
+            // Preparar datos
             const puntos = [];
             const valores = featuresPuntos
                 .map(function(f) { return parseFloat(f.properties[variable]); })
                 .filter(function(v) { return !isNaN(v) && v !== null && v > 0; });
             
             if (valores.length === 0) {
-                alert('No hay valores positivos para el indicador seleccionado en los puntos.');
+                alert('No hay valores positivos para el indicador seleccionado.');
                 toggleHeatmap();
                 return;
             }
@@ -898,9 +897,11 @@
             
             console.log('📊 Rango de valores:', minValor, '→', maxValor);
             
-            // Filtrar puntos según filtros activos (si aplica)
+            // Aplicar filtros
             var filtrosActivosHeat = getFiltros();
             var algunActivo = Object.values(filtrosActivosHeat).some(function(v) { return v === true; });
+            
+            var puntosGenerados = 0;
             
             for (var i = 0; i < featuresPuntos.length; i++) {
                 var f = featuresPuntos[i];
@@ -918,7 +919,6 @@
                     var categoria = f.properties[variable] || 'SIN_DATOS';
                     if (algunActivo && filtrosActivosHeat[categoria] === false) continue;
                 } else {
-                    // Para variables numéricas, aplicar filtros de rango si existen
                     if (algunActivo && valor > 0) {
                         var index = getRangoIndex(variable, valor);
                         var key = 'rango_' + index;
@@ -927,45 +927,82 @@
                 }
                 
                 if (valor > 0) {
-                    var intensidad = 0.1 + 0.9 * ((valor - minValor) / rango);
-                    puntos.push([lat, lng, intensidad]);
+                    var intensidad = (valor - minValor) / rango;
+                    puntos.push({
+                        lat: lat,
+                        lng: lng,
+                        intensidad: intensidad,
+                        valor: valor,
+                        props: f.properties
+                    });
+                    puntosGenerados++;
                 }
             }
             
-            console.log('✅ Puntos generados para heatmap:', puntos.length);
+            console.log('✅ Puntos generados para heatmap:', puntosGenerados);
             
             if (puntos.length === 0) {
-                alert('No se generaron puntos para el heatmap. Prueba con otro indicador o quita los filtros.');
+                alert('No se generaron puntos para el heatmap.');
                 toggleHeatmap();
                 return;
             }
             
+            // Eliminar heatmap anterior
             if (heatLayerInstance) {
                 map.removeLayer(heatLayerInstance);
                 heatLayerInstance = null;
             }
             
-            console.log('🔥 Creando heatmap con', puntos.length, 'puntos...');
+            // Crear capa de calor con círculos
+            heatLayerInstance = L.layerGroup();
             
-            heatLayerInstance = L.heatLayer(puntos, {
-                radius: 25,
-                blur: 15,
-                maxZoom: 15,
-                minOpacity: 0.3,
-                gradient: {
-                    0.0: '#0000FF',
-                    0.2: '#00FFFF',
-                    0.4: '#00FF00',
-                    0.6: '#FFFF00',
-                    0.8: '#FF8800',
-                    1.0: '#FF0000'
-                }
-            }).addTo(map);
+            // Colores: azul → verde → amarillo → rojo
+            var colores = [
+                [0, 0, 255, 0.3],    // Azul
+                [0, 128, 255, 0.5],  // Azul claro
+                [0, 255, 255, 0.6],  // Cian
+                [0, 255, 128, 0.7],  // Verde-azul
+                [255, 255, 0, 0.8],  // Amarillo
+                [255, 128, 0, 0.9],  // Naranja
+                [255, 0, 0, 0.95]    // Rojo
+            ];
             
-            console.log('✅ Heatmap añadido al mapa');
+            for (var i = 0; i < puntos.length; i++) {
+                var p = puntos[i];
+                var radio = 200 + p.intensidad * 800; // Radio entre 200 y 1000 metros
+                var idx = Math.min(Math.floor(p.intensidad * (colores.length - 1)), colores.length - 1);
+                var color = colores[idx];
+                var colorStr = 'rgba(' + color[0] + ', ' + color[1] + ', ' + color[2] + ', ' + color[3] + ')';
+                
+                var circle = L.circle([p.lat, p.lng], {
+                    radius: radio,
+                    color: colorStr,
+                    fillColor: colorStr,
+                    fillOpacity: 0.6,
+                    weight: 0,
+                    interactive: true
+                });
+                
+                // Popup con información del punto
+                var nombre = p.props.PROVINCIA || p.props.DISTRITO || 'Punto';
+                circle.bindPopup(
+                    '<div style="font-family:\'Segoe UI\',sans-serif;font-size:11px;line-height:1.6;">' +
+                    '<strong>' + nombre + '</strong><br>' +
+                    '<strong>' + (variableLabels[variable] || variable) + ':</strong> ' + p.valor.toFixed(2) + '<br>' +
+                    '<strong>Intensidad:</strong> ' + (p.intensidad * 100).toFixed(1) + '%' +
+                    '</div>'
+                );
+                
+                heatLayerInstance.addLayer(circle);
+            }
             
+            heatLayerInstance.addTo(map);
+            
+            console.log('✅ Heatmap casero añadido al mapa con', puntos.length, 'círculos');
+            
+            // Ajustar zoom
             try {
-                var bounds = L.latLngBounds(puntos.map(function(p) { return [p[0], p[1]]; }));
+                var bounds = L.latLngBounds(puntos.map(function(p) { return [p.lat, p.lng]; }));
                 if (bounds.isValid() && !bounds.isZero()) {
                     map.fitBounds(bounds, { padding: [50, 50] });
                 }
@@ -973,6 +1010,7 @@
                 console.warn('⚠️ No se pudo ajustar el zoom:', e);
             }
             
+            // Actualizar leyenda
             var legendDiv = document.getElementById('legend');
             if (legendDiv) {
                 legendDiv.innerHTML = 
@@ -982,7 +1020,9 @@
                         '<div style="flex:1; height:8px; background: linear-gradient(to right, blue, cyan, lime, yellow, orange, red); border-radius:4px;"></div>' +
                         '<span style="font-size:9px;">Alto</span>' +
                     '</div>' +
-                    '<div class="legend-desc">💡 Intensidad: ' + (variableLabels[variable] || variable) + '</div>';
+                    '<div style="font-size:9px; color:#666; margin-top:4px;">' +
+                        '💡 ' + puntos.length + ' puntos · ' + (variableLabels[variable] || variable) +
+                    '</div>';
             }
         }
         
