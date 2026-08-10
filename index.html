@@ -1521,6 +1521,31 @@
             }
         }
 
+
+        // ================================================================
+        // SELECTOR DE MAPA BASE (CORREGIDO)
+        // ================================================================
+        document.getElementById('map-select').addEventListener('change', function(e) {
+            const value = e.target.value;
+            
+            // Eliminar TODAS las capas base del mapa
+            if (map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
+            if (map.hasLayer(osmLayer)) map.removeLayer(osmLayer);
+            if (map.hasLayer(topoLayer)) map.removeLayer(topoLayer);
+            
+            // Añadir la capa seleccionada
+            if (value === 'satellite') {
+                satelliteLayer.addTo(map);
+                console.log('🛰️ Cambiado a mapa Satélite');
+            } else if (value === 'osm') {
+                osmLayer.addTo(map);
+                console.log('🌍 Cambiado a OpenStreetMap');
+            } else if (value === 'topo') {
+                topoLayer.addTo(map);
+                console.log('🗺️ Cambiado a mapa Topográfico');
+            }
+        });
+        
         // ================================================================
         // 13. EVENTOS
         // ================================================================
