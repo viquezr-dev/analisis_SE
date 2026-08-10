@@ -635,13 +635,12 @@
                 // PERS_VIV: Colores en escala de púrpuras (CORREGIDO)
                 // ============================================================
                 if (variable === 'PERS_VIV') {
-                    const colores = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
-                    if (value < 1.2) return colores[0];
-                    if (value < 2.4) return colores[1];
-                    if (value < 3.6) return colores[2];
-                    if (value < 4.8) return colores[3];
-                    return colores[4];
-                }
+                if (value < 1.2) return 0;  // Muy bajo
+                if (value < 2.4) return 1;  // Bajo
+                if (value < 3.6) return 2;  // Medio
+                if (value < 4.8) return 3;  // Alto
+                return 4;                    // Muy alto
+            }
                 
                 // ============================================================
                 // OTRAS VARIABLES: Escala genérica
@@ -694,12 +693,11 @@
             // PERS_VIV: Personas por vivienda ocupada (0-6)
             // ============================================================
             if (variable === 'PERS_VIV') {
-                const colores = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
-                if (value < 1.2) return colores[0];
-                if (value < 2.4) return colores[1];
-                if (value < 3.6) return colores[2];
-                if (value < 4.8) return colores[3];
-                return colores[4];
+                if (value < 1.2) return 0;       // Muy bajo
+                if (value < 2.4) return 1;       // Bajo
+                if (value < 3.6) return 2;       // Medio
+                if (value < 4.8) return 3;       // Alto
+                return 4;                         // Muy alto
             }
             
             // ============================================================
