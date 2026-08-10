@@ -11,9 +11,7 @@
     
     <!-- Leaflet JS (PRIMERO) -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!-- Leaflet.heat (USANDO CDNJS - MÁS CONFIABLE) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+
     <style>
         * {
             margin: 0;
@@ -517,7 +515,174 @@
         // 1. MAPA Y CAPAS BASE
         // ================================================================
         const map = L.map('map', { center: [8.0, -80.0], zoom: 7 });
-
+        // ================================================================
+        // LEAFLET.HEAT - CÓDIGO EMBEBIDO (SIN DEPENDENCIAS EXTERNAS)
+        // ================================================================
+        (function (factory) {
+            if (typeof define === 'function' && define.amd) {
+                define(['leaflet'], factory);
+            } else if (typeof module !== 'undefined' && module.exports) {
+                module.exports = factory(require('leaflet'));
+            } else {
+                factory(L);
+            }
+        }(function (L) {
+            // Simple Heatmap Layer
+            L.HeatLayer = L.Layer.extend({
+                initialize: function (latlngs, options) {
+                    this._latlngs = latlngs || [];
+                    L.setOptions(this, options);
+                },
+                setLatLngs: function (latlngs) {
+                    this._latlngs = latlngs;
+                    if (this._map) {
+                        this._redraw();
+                    }
+                    return this;
+                },
+                addLatLng: function (latlng) {
+                    this._latlngs.push(latlng);
+                    if (this._map) {
+                        this._redraw();
+                    }
+                    return this;
+                },
+                onAdd: function (map) {
+                    this._map = map;
+                    this._canvas = L.DomUtil.create('canvas', 'leaflet-heatmap-layer');
+                    var size = this._map.getSize();
+                    this._canvas.width = size.x;
+                    this._canvas.height = size.y;
+                    var pane = this._map.getPane('overlayPane');
+                    pane.appendChild(this._canvas);
+                    this._map.on('moveend', this._redraw, this);
+                    this._redraw();
+                },
+                onRemove: function (map) {
+                    this._map.off('moveend', this._redraw, this);
+                    var pane = this._map.getPane('overlayPane');
+                    pane.removeChild(this._canvas);
+                    this._canvas = null;
+                    this._map = null;
+                },
+                _redraw: function () {
+                    if (!this._map) return;
+                    var size = this._map.getSize();
+                    this._canvas.width = size.x;
+                    this._canvas.height = size.y;
+                    this._canvas.style.width = size.x + 'px';
+                    this._canvas.style.height = size.y + 'px';
+                    this._draw();
+                },
+                _draw: function () {
+                    var canvas = this._canvas;
+                    var ctx = canvas.getContext('2d');
+                    var map = this._map;
+                    var size = map.getSize();
+                    var bounds = map.getBounds();
+                    var zoom = map.getZoom();
+                    
+                    ctx.clearRect(0, 0, size.x, size.y);
+                    
+                    if (!this._latlngs.length) return;
+                    
+                    var radius = this.options.radius || 25;
+                    var blur = this.options.blur || 15;
+                    var maxZoom = this.options.maxZoom || 18;
+                    var minOpacity = this.options.minOpacity || 0.05;
+                    var gradient = this.options.gradient || {
+                        0.0: 'blue',
+                        0.2: 'cyan',
+                        0.4: 'lime',
+                        0.6: 'yellow',
+                        0.8: 'orange',
+                        1.0: 'red'
+                    };
+                    
+                    // Convertir colores
+                    var gradientColors = {};
+                    for (var key in gradient) {
+                        gradientColors[key] = this._hexToRgb(gradient[key]);
+                    }
+                    
+                    var points = this._latlngs;
+                    var maxIntensity = 1;
+                    
+                    // Encontrar intensidad máxima
+                    for (var i = 0; i < points.length; i++) {
+                        var p = points[i];
+                        var intensity = p[2] || 1;
+                        if (intensity > maxIntensity) maxIntensity = intensity;
+                    }
+                    
+                    var scaleFactor = 1 / maxIntensity;
+                    
+                    // Dibujar cada punto
+                    for (var i = 0; i < points.length; i++) {
+                        var p = points[i];
+                        var lat = p[0];
+                        var lng = p[1];
+                        var intensity = (p[2] || 1) * scaleFactor;
+                        
+                        var point = map.latLngToContainerPoint([lat, lng]);
+                        var x = point.x;
+                        var y = point.y;
+                        
+                        // Calcular radio basado en zoom
+                        var r = radius * Math.pow(2, (zoom - 10) / 3);
+                        
+                        // Crear gradiente radial
+                        var gradientObj = ctx.createRadialGradient(x, y, 0, x, y, r);
+                        
+                        // Aplicar intensidad
+                        var color = this._getColor(intensity, gradientColors);
+                        var alpha = Math.max(minOpacity, intensity * 0.8);
+                        
+                        gradientObj.addColorStop(0, 'rgba(' + color.r + ',' + color.g + ',' + color.b + ',' + alpha + ')');
+                        gradientObj.addColorStop(0.5, 'rgba(' + color.r + ',' + color.g + ',' + color.b + ',' + (alpha * 0.6) + ')');
+                        gradientObj.addColorStop(1, 'rgba(' + color.r + ',' + color.g + ',' + color.b + ',0)');
+                        
+                        ctx.fillStyle = gradientObj;
+                        ctx.beginPath();
+                        ctx.arc(x, y, r, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                },
+                _hexToRgb: function(hex) {
+                    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                    return result ? {
+                        r: parseInt(result[1], 16),
+                        g: parseInt(result[2], 16),
+                        b: parseInt(result[3], 16)
+                    } : { r: 0, g: 0, b: 0 };
+                },
+                _getColor: function(intensity, gradientColors) {
+                    var keys = Object.keys(gradientColors).sort(function(a,b){return parseFloat(a)-parseFloat(b);});
+                    for (var i = 0; i < keys.length - 1; i++) {
+                        var k1 = parseFloat(keys[i]);
+                        var k2 = parseFloat(keys[i+1]);
+                        if (intensity >= k1 && intensity <= k2) {
+                            var t = (intensity - k1) / (k2 - k1);
+                            var c1 = gradientColors[k1];
+                            var c2 = gradientColors[k2];
+                            return {
+                                r: Math.round(c1.r + (c2.r - c1.r) * t),
+                                g: Math.round(c1.g + (c2.g - c1.g) * t),
+                                b: Math.round(c1.b + (c2.b - c1.b) * t)
+                            };
+                        }
+                    }
+                    var lastKey = keys[keys.length - 1];
+                    return gradientColors[lastKey];
+                }
+            });
+            
+            L.heatLayer = function(latlngs, options) {
+                return new L.HeatLayer(latlngs, options);
+            };
+            
+            return L.heatLayer;
+        }));
         const satelliteLayer = L.tileLayer(
             'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 attribution: 'Tiles &copy; Esri',
