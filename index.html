@@ -9,7 +9,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/build/heatmap.min.js"></script>
+
+    <!-- ✅ Leaflet PRIMERO -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- ✅ leaflet-heatmap.js DESPUÉS de Leaflet -->
     <script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/plugins/leaflet-heatmap/leaflet-heatmap.js"></script>
     
     <style>
@@ -526,10 +530,6 @@
             heatmapLayer = new HeatmapOverlay(heatmapConfig);
             console.log('✅ Heatmap inicializado correctamente');
         }
-            
-            heatmapLayer = new HeatmapOverlay(heatmapConfig);
-            console.log('✅ Heatmap inicializado correctamente');
-        }
         
         // Llamar a initHeatmap después de cargar la página
         document.addEventListener('DOMContentLoaded', function() {
@@ -537,7 +537,7 @@
         });
 
         // ================================================================
-        // 3. PALETAS DE COLORES
+        // 4. PALETAS DE COLORES
         // ================================================================
         const catColors = {
             'MUY_BAJA': '#fcbba1',
@@ -578,16 +578,8 @@
         function getColorByValue(variable, value, min, max) {
             if (isNaN(value) || value === null || value === 0) return '#cccccc';
             
-            // ============================================================
-            // CAT_DENS: Colores fijos por categoría
-            // ============================================================
-            if (variable === 'CAT_DENS') {
-                return catColors[value] || '#cccccc';
-            }
+            if (variable === 'CAT_DENS') return catColors[value] || '#cccccc';
             
-            // ============================================================
-            // DENS_POB: Colores específicos por rango
-            // ============================================================
             if (variable === 'DENS_POB') {
                 const coloresDensidad = ['#fcbba1', '#fc9272', '#fb6a4a', '#de2d26', '#a50f15', '#67000d'];
                 const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
@@ -599,9 +591,6 @@
                 return coloresDensidad[coloresDensidad.length - 1];
             }
             
-            // ============================================================
-            // VIV_OCUP: Colores en escala de verdes
-            // ============================================================
             if (variable === 'VIV_OCUP') {
                 const colores = ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
                 const limites = [0, 1600, 3200, 4800, 6400, 8000];
@@ -613,9 +602,6 @@
                 return colores[colores.length - 1];
             }
             
-            // ============================================================
-            // PORC_OCU: Colores en escala de naranjas
-            // ============================================================
             if (variable === 'PORC_OCU') {
                 const colores = ['#fdd0a2', '#fdae6b', '#f16913', '#d94801', '#8c2d04'];
                 const limites = [0, 20, 40, 60, 80, 100];
@@ -627,12 +613,8 @@
                 return colores[colores.length - 1];
             }
             
-            // ============================================================
-            // PERS_VIV: Colores en escala de púrpuras (CORREGIDO)
-            // ============================================================
             if (variable === 'PERS_VIV') {
                 const colores = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
-                // Usar rangos fijos 0-6 en lugar de min/max
                 if (value < 1.2) return colores[0];
                 if (value < 2.4) return colores[1];
                 if (value < 3.6) return colores[2];
@@ -640,9 +622,6 @@
                 return colores[4];
             }
             
-            // ============================================================
-            // OTRAS VARIABLES: Escala genérica
-            // ============================================================
             const palette = ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
             const t = (value - min) / (max - min + 0.0001);
             const index = Math.min(Math.floor(t * palette.length), palette.length - 1);
@@ -652,9 +631,6 @@
         function getRangoIndex(variable, value) {
             if (isNaN(value) || value === null || value === 0) return 0;
             
-            // ============================================================
-            // DENS_POB: Rangos específicos de densidad
-            // ============================================================
             if (variable === 'DENS_POB') {
                 const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
                 for (let i = 0; i < limites.length - 1; i++) {
@@ -665,42 +641,30 @@
                 return limites.length - 2;
             }
             
-            // ============================================================
-            // VIV_OCUP: Viviendas ocupadas (0-8000)
-            // ============================================================
             if (variable === 'VIV_OCUP') {
-                if (value < 1600) return 0;      // Muy bajo
-                if (value < 3200) return 1;      // Bajo
-                if (value < 4800) return 2;      // Medio
-                if (value < 6400) return 3;      // Alto
-                return 4;                         // Muy alto
+                if (value < 1600) return 0;
+                if (value < 3200) return 1;
+                if (value < 4800) return 2;
+                if (value < 6400) return 3;
+                return 4;
             }
             
-            // ============================================================
-            // PORC_OCU: Porcentaje de ocupación (0-100)
-            // ============================================================
             if (variable === 'PORC_OCU') {
-                if (value < 20) return 0;        // Muy bajo
-                if (value < 40) return 1;        // Bajo
-                if (value < 60) return 2;        // Medio
-                if (value < 80) return 3;        // Alto
-                return 4;                         // Muy alto
+                if (value < 20) return 0;
+                if (value < 40) return 1;
+                if (value < 60) return 2;
+                if (value < 80) return 3;
+                return 4;
             }
             
-            // ============================================================
-            // PERS_VIV: Personas por vivienda ocupada (0-6) - CORREGIDO
-            // ============================================================
             if (variable === 'PERS_VIV') {
-                if (value < 1.2) return 0;       // Muy bajo
-                if (value < 2.4) return 1;       // Bajo
-                if (value < 3.6) return 2;       // Medio
-                if (value < 4.8) return 3;       // Alto
-                return 4;                         // Muy alto
+                if (value < 1.2) return 0;
+                if (value < 2.4) return 1;
+                if (value < 3.6) return 2;
+                if (value < 4.8) return 3;
+                return 4;
             }
             
-            // ============================================================
-            // OTRAS VARIABLES: Rango automático (fallback)
-            // ============================================================
             return 0;
         }
 
@@ -728,9 +692,7 @@
                         <span class="count-badge" id="count-${key}">0</span>
                     </label>`;
                 }
-            }
-           
-            if (variable === 'CAT_DENS') {
+            } else if (variable === 'CAT_DENS') {
                 const items = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 html = `<h4>🔍 Filtrar por categoría:</h4>
                     <div class="select-all-container">
@@ -756,7 +718,6 @@
                 for (let i = 0; i < nombresRangos.length; i++) {
                     const key = `rango_${i}`;
                     const checked = filtrosActivos[key] !== false;
-                    // Color de muestra según variable
                     const color = getColorByValue(variable, i / (nombresRangos.length - 1), 0, 1);
                     html += `<label class="filtro-checkbox">
                         <input type="checkbox" value="${key}" ${checked ? 'checked' : ''} />
@@ -770,7 +731,6 @@
             html += `<button class="btn-reset-filtros" onclick="resetFiltros()">🔄 Restablecer filtros</button>`;
             container.innerHTML = html;
             
-            // Eventos de los checkboxes
             document.querySelectorAll('.filtro-checkbox input[type="checkbox"]').forEach(cb => {
                 cb.addEventListener('change', function() {
                     filtrosActivos[this.value] = this.checked;
@@ -781,9 +741,8 @@
             actualizarContadores();
         }
 
-
         // ================================================================
-        // 5. FUNCIONES DE FILTROS (VERSIÓN COMPLETA)
+        // 6. FUNCIONES DE FILTROS Y CONTADORES
         // ================================================================
         function getFiltros() {
             const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
@@ -812,104 +771,25 @@
             });
         }
         
-        // ================================================================
-        // ACTUALIZAR HEATMAP CON NUEVA CONFIGURACIÓN (VERSIÓN CORREGIDA)
-        // ================================================================
-        function actualizarHeatmap() {
-            // Verificar que el heatmap existe y está en modo calor
-            if (!heatmapLayer || currentMode !== 'heatmap') {
-                console.warn('⚠️ Heatmap no disponible para actualizar');
-                return;
-            }
-            
-            // Obtener valores de los sliders
-            const radius = parseInt(document.getElementById('radius-slider').value);
-            const blur = parseFloat(document.getElementById('blur-slider').value) / 40;
-            
-            // Actualizar configuración global
-            heatmapConfig.radius = radius;
-            heatmapConfig.blur = blur;
-            
-            // Reconfigurar el heatmap usando el método correcto
-            try {
-                // Heatmap.js usa h337 para configurar
-                if (heatmapLayer._heatmap) {
-                    // Actualizar configuración del heatmap interno
-                    heatmapLayer._heatmap.configure({
-                        radius: radius,
-                        blur: blur
-                    });
-                    // Forzar redibujo
-                    heatmapLayer._update();
-                } else if (heatmapLayer._renderer) {
-                    // Algunas versiones usan _renderer
-                    heatmapLayer._renderer.configure({
-                        radius: radius,
-                        blur: blur
-                    });
-                    heatmapLayer._update();
-                }
-                console.log(`✅ Heatmap actualizado: radius=${radius}, blur=${blur.toFixed(3)}`);
-            } catch (e) {
-                console.warn('⚠️ Error al actualizar heatmap:', e);
-                // Si falla, recrear el heatmap
-                if (currentMode === 'heatmap') {
-                    console.log('🔄 Recreando heatmap...');
-                    updateMap();
-                }
-            }
-        }
-        
-        // ================================================================
-        // OBTENER NOMBRES DE RANGOS SEGÚN VARIABLE
-        // ================================================================
         function obtenerNombresRangos(variable) {
             if (variable === 'DENS_POB') {
-                return [
-                    'Muy baja (<100)',
-                    'Baja (100-500)',
-                    'Media-Baja (500-2000)',
-                    'Media (2000-5000)',
-                    'Alta (5000-10000)',
-                    'Muy alta (>10000)'
-                ];
+                return ['Muy baja (<100)', 'Baja (100-500)', 'Media-Baja (500-2000)', 'Media (2000-5000)', 'Alta (5000-10000)', 'Muy alta (>10000)'];
             }
             if (variable === 'VIV_OCUP') {
-                return [
-                    'Muy bajo (0-1600)',
-                    'Bajo (1600-3200)',
-                    'Medio (3200-4800)',
-                    'Alto (4800-6400)',
-                    'Muy alto (6400-8000)'
-                ];
+                return ['Muy bajo (0-1600)', 'Bajo (1600-3200)', 'Medio (3200-4800)', 'Alto (4800-6400)', 'Muy alto (6400-8000)'];
             }
             if (variable === 'PORC_OCU') {
-                return [
-                    'Muy bajo (0-20%)',
-                    'Bajo (20-40%)',
-                    'Medio (40-60%)',
-                    'Alto (60-80%)',
-                    'Muy alto (80-100%)'
-                ];
+                return ['Muy bajo (0-20%)', 'Bajo (20-40%)', 'Medio (40-60%)', 'Alto (60-80%)', 'Muy alto (80-100%)'];
             }
             if (variable === 'PERS_VIV') {
-                return [
-                    'Muy bajo (0.0-1.2)',
-                    'Bajo (1.2-2.4)',
-                    'Medio (2.4-3.6)',
-                    'Alto (3.6-4.8)',
-                    'Muy alto (4.8-6.0)'
-                ];
+                return ['Muy bajo (0.0-1.2)', 'Bajo (1.2-2.4)', 'Medio (2.4-3.6)', 'Alto (3.6-4.8)', 'Muy alto (4.8-6.0)'];
             }
-            // Fallback
             return ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
         }
-        
         
         function actualizarContadores() {
             const variable = currentVariable;
             
-            // CAT_DENS: Contar por categorías
             if (variable === 'CAT_DENS') {
                 const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 for (const cat of categories) {
@@ -920,7 +800,6 @@
                 return;
             }
             
-            // Variables numéricas: Contar por rangos
             const nombresRangos = obtenerNombresRangos(variable);
             const stepCount = nombresRangos.length;
             
@@ -964,14 +843,14 @@
         }
 
         // ================================================================
-        // 6. BUSCADOR
+        // 7. BUSCADOR
         // ================================================================
         function buscarPoligonos() {
             const texto = document.getElementById('searchInput').value.toLowerCase().trim();
             if (!texto || !geoJsonData) return;
 
             const encontrados = allFeatures.filter(f => {
-                const prov = (f.properties.PROVINCIA || '').toLowerCase();
+                const prov = (f.properties.PROV_NOMB || '').toLowerCase(); // CAMBIO: PROVINCIA a PROV_NOMB
                 const dist = (f.properties.DISTRITO || '').toLowerCase();
                 return prov.includes(texto) || dist.includes(texto);
             });
@@ -986,10 +865,8 @@
                 features: encontrados
             };
 
-            // Eliminar capa actual
             if (currentLayer) map.removeLayer(currentLayer);
 
-            // Crear capa temporal con los resultados
             currentLayer = L.geoJSON(geoJsonEncontrados, {
                 style: function(feature) {
                     let value = feature.properties[currentVariable];
@@ -999,17 +876,13 @@
                     } else {
                         const numVal = parseFloat(value);
                         if (!isNaN(numVal) && numVal !== null) {
-                            const min = 0, max = 1;
-                            color = getColorByValue(currentVariable, numVal, min, max);
+                            color = getColorByValue(currentVariable, numVal, 0, 1);
                         }
                     }
                     return { fillColor: color, weight: 2, opacity: 0.9, color: '#000000', fillOpacity: 0.85 };
                 },
                 onEachFeature: function(feature, layer) {
-                    const p = feature.properties;
-                    const areaM2 = p.AREA || 0;
-                    const areaKm2 = areaM2 / 1000000;
-                    layer.bindPopup(crearPopup(p));
+                    layer.bindPopup(crearPopup(feature.properties));
                 }
             }).addTo(map);
 
@@ -1021,13 +894,14 @@
         }
 
         // ================================================================
-        // 7. POPUP
+        // 8. POPUP
         // ================================================================
         function crearPopup(p) {
             const areaM2 = p.AREA || 0;
             const areaKm2 = areaM2 / 1000000;
+            // CAMBIO: PROVINCIA a PROV_NOMB
             return `<div style="font-family:'Segoe UI',sans-serif;min-width:170px;max-width:240px;font-size:11px;">
-                <h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:12px;">${p.PROVINCIA || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
+                <h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:12px;">${p.PROV_NOMB || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
                 ${p.BARR_NOMB ? `<div style="font-size:10px;color:#666;margin-bottom:2px;">📍 ${p.BARR_NOMB}</div>` : ''}
                 <hr style="margin:3px 0;border:0;border-top:1px solid #ddd;">
                 <table style="width:100%;font-size:10px;line-height:1.4;">
@@ -1044,7 +918,7 @@
         }
 
         // ================================================================
-        // 8. EXPORTAR CSV
+        // 9. EXPORTAR CSV
         // ================================================================
         function exportarCSV() {
             if (!geoJsonData || allFeatures.length === 0) {
@@ -1053,14 +927,15 @@
             }
 
             const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
-            const headers = ['PROVINCIA', 'DISTRITO', 'BARR_NOMB', 'VIVIENDA', 'V_PERSONAS',
+            // CAMBIO: PROVINCIA a PROV_NOMB
+            const headers = ['PROV_NOMB', 'DISTRITO', 'BARR_NOMB', 'VIVIENDA', 'V_PERSONAS',
                 'VIV_OCUP', 'PORC_OCU', 'DENS_POB', 'PERS_VIV', 'CAT_DENS', 'AREA_KM2'
             ];
 
             const rows = features.map(f => {
                 const p = f.properties;
                 return [
-                    p.PROVINCIA || '', p.DISTRITO || '', p.BARR_NOMB || '',
+                    p.PROV_NOMB || '', p.DISTRITO || '', p.BARR_NOMB || '',
                     p.VIVIENDA || 0, p.V_PERSONAS || 0, p.VIV_OCUP || 0,
                     p.PORC_OCU ? p.PORC_OCU.toFixed(1) : 0,
                     p.DENS_POB ? p.DENS_POB.toFixed(1) : 0,
@@ -1082,7 +957,7 @@
         }
 
         // ================================================================
-        // 9. ESTADÍSTICAS
+        // 10. ESTADÍSTICAS
         // ================================================================
         function mostrarEstadisticas() {
             document.getElementById('statsModal').classList.add('active');
@@ -1119,7 +994,6 @@
                 }
             }
 
-            // Estadísticas numéricas
             const statsDiv = document.getElementById('statsNumbers');
             let statsHTML = '';
             if (variable !== 'CAT_DENS') {
@@ -1146,7 +1020,6 @@
             }
             statsDiv.innerHTML = statsHTML;
 
-            // Gráfico
             if (chartInstance) chartInstance.destroy();
             const ctx = document.getElementById('statsChart').getContext('2d');
             chartInstance = new Chart(ctx, {
@@ -1163,30 +1036,25 @@
 
         function closeStats() {
             document.getElementById('statsModal').classList.remove('active');
-            if (chartInstance) { chartInstance.destroy();
-                chartInstance = null; }
+            if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
         }
 
         // ================================================================
-        // 10. ACTUALIZAR MAPA
+        // 11. ACTUALIZAR MAPA Y HEATMAP
         // ================================================================
         function updateMap() {
             if (!geoJsonData) return;
 
             const variable = currentVariable;
-            console.log(`📊 Actualizando mapa con variable: ${variable}`);
             const featuresFiltradas = aplicarFiltros(allFeatures, variable);
             currentFeaturesFiltradas = featuresFiltradas;
 
             document.getElementById('count-mostrados').textContent = featuresFiltradas.length;
             document.getElementById('count-total').textContent = allFeatures.length;
 
-            // Limpiar capa anterior
             if (currentLayer) map.removeLayer(currentLayer);
 
-            // Modo Heatmap
             if (currentMode === 'heatmap') {
-                // Preparar datos para heatmap
                 const heatData = { max: 100, data: [] };
                 let maxVal = -Infinity;
 
@@ -1198,7 +1066,6 @@
                     }
                     if (isNaN(val) || val === null) return;
 
-                    // Calcular centroide con turf
                     try {
                         const centroid = turf.centroid(f);
                         const coords = centroid.geometry.coordinates;
@@ -1208,22 +1075,14 @@
                 });
 
                 heatData.max = maxVal === -Infinity ? 100 : maxVal;
-                map.removeLayer(heatmapLayer);
+                if (heatmapLayer) map.removeLayer(heatmapLayer);
                 heatmapLayer = new HeatmapOverlay(heatmapConfig);
                 map.addLayer(heatmapLayer);
                 heatmapLayer.setData(heatData);
 
-                // Mostrar polígonos transparentes
                 currentLayer = L.geoJSON(geoJsonData, {
-                    style: {
-                        fillColor: 'transparent',
-                        fillOpacity: 0.01,
-                        color: 'rgba(255,255,255,0.3)',
-                        weight: 1
-                    },
-                    onEachFeature: function(feature, layer) {
-                        layer.bindPopup(crearPopup(feature.properties));
-                    }
+                    style: { fillColor: 'transparent', fillOpacity: 0.01, color: 'rgba(255,255,255,0.3)', weight: 1 },
+                    onEachFeature: function(feature, layer) { layer.bindPopup(crearPopup(feature.properties)); }
                 }).addTo(map);
 
                 document.getElementById('legend').innerHTML = `
@@ -1242,7 +1101,6 @@
                 return;
             }
 
-            // Modo Polígonos
             const minMax = { min: 0, max: 1 };
             if (variable !== 'CAT_DENS') {
                 let min = Infinity, max = -Infinity;
@@ -1253,14 +1111,10 @@
                         if (val > max) max = val;
                     }
                 });
-                if (min !== Infinity) { minMax.min = min;
-                    minMax.max = max; }
+                if (min !== Infinity) { minMax.min = min; minMax.max = max; }
             }
 
-            currentLayer = L.geoJSON({
-                type: 'FeatureCollection',
-                features: featuresFiltradas
-            }, {
+            currentLayer = L.geoJSON({ type: 'FeatureCollection', features: featuresFiltradas }, {
                 style: function(feature) {
                     let value = feature.properties[variable];
                     let color = '#cccccc';
@@ -1270,7 +1124,6 @@
                     } else {
                         const numVal = parseFloat(value);
                         if (!isNaN(numVal) && numVal !== null) {
-                            // Para PERS_VIV usar rangos fijos (0-6)
                             if (variable === 'PERS_VIV') {
                                 const coloresPersViv = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
                                 if (numVal < 1.2) color = coloresPersViv[0];
@@ -1321,16 +1174,40 @@
             document.getElementById('info-value').textContent = 'Clic en un polígono para detalles';
         }
 
+        function actualizarHeatmap() {
+            if (!heatmapLayer || currentMode !== 'heatmap') return;
+            
+            const radius = parseInt(document.getElementById('radius-slider').value);
+            const blur = parseFloat(document.getElementById('blur-slider').value) / 40;
+            
+            heatmapConfig.radius = radius;
+            heatmapConfig.blur = blur;
+            
+            try {
+                if (heatmapLayer._heatmap) {
+                    heatmapLayer._heatmap.configure({ radius: radius, blur: blur });
+                    if (heatmapLayer._update) heatmapLayer._update();
+                } else {
+                    const currentData = heatmapLayer._data;
+                    if (currentData) {
+                        map.removeLayer(heatmapLayer);
+                        heatmapLayer = new HeatmapOverlay(heatmapConfig);
+                        map.addLayer(heatmapLayer);
+                        heatmapLayer.setData(currentData);
+                    }
+                }
+            } catch (e) {
+                if (currentMode === 'heatmap' && geoJsonData) updateMap();
+            }
+        }
+
         // ================================================================
-        // 11. LEYENDA PERSONALIZADA (CON CATEGORÍAS ESPECÍFICAS)
+        // 12. LEYENDA
         // ================================================================
         function updateLegend(variable, features) {
             const legendDiv = document.getElementById('legend');
             let html = `<div class="legend-title">Leyenda</div>`;
         
-            // ============================================================
-            // MODO CALOR: Leyenda de gradiente
-            // ============================================================
             if (currentMode === 'heatmap') {
                 let valores = [];
                 features.forEach(f => {
@@ -1346,30 +1223,18 @@
                 const maxVal = valores.length > 0 ? Math.max(...valores) : 100;
                 
                 let label = variableLabels[variable] || variable;
-                if (variable === 'CAT_DENS') {
-                    label = 'Categoría de densidad (1-6)';
-                }
+                if (variable === 'CAT_DENS') label = 'Categoría de densidad (1-6)';
                 
                 html += `
-                    <div style="margin-bottom:6px; font-size:10px; color:#2c3e50;">
-                        <strong>${label}</strong>
-                    </div>
+                    <div style="margin-bottom:6px; font-size:10px; color:#2c3e50;"><strong>${label}</strong></div>
                     <div class="gradient-bar"></div>
-                    <div class="gradient-labels">
-                        <span>Bajo (${minVal.toFixed(1)})</span>
-                        <span>Alto (${maxVal.toFixed(1)})</span>
-                    </div>
+                    <div class="gradient-labels"><span>Bajo (${minVal.toFixed(1)})</span><span>Alto (${maxVal.toFixed(1)})</span></div>
                     <div class="legend-desc">💡 Intensidad del calor</div>
                 `;
                 legendDiv.innerHTML = html;
                 return;
             }
         
-            // ============================================================
-            // MODO POLÍGONOS: Leyenda según variable
-            // ============================================================
-            
-            // --- CAT_DENS ---
             if (variable === 'CAT_DENS') {
                 const categories = [
                     { key: 'MUY_BAJA', label: 'Muy baja (<100 hab/km²)', color: '#fcbba1' },
@@ -1381,64 +1246,39 @@
                     { key: 'SIN_DATOS', label: 'Sin datos', color: '#b0b0b0' }
                 ];
                 for (const cat of categories) {
-                    html += `<div class="legend-item">
-                        <div class="legend-color" style="background:${cat.color};"></div>
-                        <span class="legend-text">${cat.label}</span>
-                    </div>`;
+                    html += `<div class="legend-item"><div class="legend-color" style="background:${cat.color};"></div><span class="legend-text">${cat.label}</span></div>`;
                 }
                 html += `<div class="legend-desc">💡 ${descripcionIndicador[variable] || ''}</div>`;
                 legendDiv.innerHTML = html;
                 return;
             }
         
-            // --- DENS_POB ---
             if (variable === 'DENS_POB') {
                 const rangos = [
-                    { min: 0, max: 100, label: 'Muy baja (<100 hab/km²)' },
-                    { min: 100, max: 500, label: 'Baja (100-500)' },
-                    { min: 500, max: 2000, label: 'Media-Baja (500-2000)' },
-                    { min: 2000, max: 5000, label: 'Media (2000-5000)' },
-                    { min: 5000, max: 10000, label: 'Alta (5000-10000)' },
-                    { min: 10000, max: 20000, label: 'Muy alta (>10000)' }
+                    { label: 'Muy baja (<100 hab/km²)' }, { label: 'Baja (100-500)' },
+                    { label: 'Media-Baja (500-2000)' }, { label: 'Media (2000-5000)' },
+                    { label: 'Alta (5000-10000)' }, { label: 'Muy alta (>10000)' }
                 ];
                 const coloresDensidad = ['#fcbba1', '#fc9272', '#fb6a4a', '#de2d26', '#a50f15', '#67000d'];
                 for (let i = 0; i < rangos.length; i++) {
-                    const r = rangos[i];
-                    html += `<div class="legend-item">
-                        <div class="legend-color" style="background:${coloresDensidad[i]};"></div>
-                        <span class="legend-text">${r.label}</span>
-                    </div>`;
+                    html += `<div class="legend-item"><div class="legend-color" style="background:${coloresDensidad[i]};"></div><span class="legend-text">${rangos[i].label}</span></div>`;
                 }
                 html += `<div class="legend-desc">💡 ${descripcionIndicador[variable] || ''}</div>`;
                 legendDiv.innerHTML = html;
                 return;
             }
         
-            // ============================================================
-            // PERS_VIV: Leyenda con colores púrpuras (NUEVA SECCIÓN)
-            // ============================================================
             if (variable === 'PERS_VIV') {
                 const colores = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
-                const rangos = [
-                    { min: 0, max: 1.2, label: 'Muy bajo (0.0-1.2)' },
-                    { min: 1.2, max: 2.4, label: 'Bajo (1.2-2.4)' },
-                    { min: 2.4, max: 3.6, label: 'Medio (2.4-3.6)' },
-                    { min: 3.6, max: 4.8, label: 'Alto (3.6-4.8)' },
-                    { min: 4.8, max: 6.0, label: 'Muy alto (4.8-6.0)' }
-                ];
+                const rangos = [{ label: 'Muy bajo (0.0-1.2)' }, { label: 'Bajo (1.2-2.4)' }, { label: 'Medio (2.4-3.6)' }, { label: 'Alto (3.6-4.8)' }, { label: 'Muy alto (4.8-6.0)' }];
                 for (let i = 0; i < rangos.length; i++) {
-                    const r = rangos[i];
-                    html += `<div class="legend-item">
-                        <div class="legend-color" style="background:${colores[i]};"></div>
-                        <span class="legend-text">${r.label}</span>
-                    </div>`;
+                    html += `<div class="legend-item"><div class="legend-color" style="background:${colores[i]};"></div><span class="legend-text">${rangos[i].label}</span></div>`;
                 }
                 html += `<div class="legend-desc">💡 ${descripcionIndicador[variable] || ''}</div>`;
                 legendDiv.innerHTML = html;
                 return;
             }
         
-            // --- OTRAS VARIABLES NUMÉRICAS (VIV_OCUP, PORC_OCU) ---
             const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
             if (valores.length === 0) {
                 html += `<div class="legend-item">Sin datos disponibles</div>`;
@@ -1446,29 +1286,15 @@
                 return;
             }
         
-            const min = Math.min(...valores);
-            const max = Math.max(...valores);
-            const steps = 5;
-            const step = (max - min) / steps;
-        
-            let nombresRangos = [];
-            if (variable === 'VIV_OCUP') {
-                nombresRangos = ['Muy pocas', 'Pocas', 'Medias', 'Muchas', 'Muchísimas'];
-            } else if (variable === 'PORC_OCU') {
-                nombresRangos = ['Muy bajo (%)', 'Bajo (%)', 'Medio (%)', 'Alto (%)', 'Muy alto (%)'];
-            } else {
-                nombresRangos = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
-            }
+            const min = Math.min(...valores), max = Math.max(...valores), steps = 5, step = (max - min) / steps;
+            let nombresRangos = variable === 'VIV_OCUP' ? ['Muy pocas', 'Pocas', 'Medias', 'Muchas', 'Muchísimas'] : 
+                               variable === 'PORC_OCU' ? ['Muy bajo (%)', 'Bajo (%)', 'Medio (%)', 'Alto (%)', 'Muy alto (%)'] : 
+                               ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
         
             for (let i = 0; i < steps; i++) {
-                const low = min + i * step;
-                const high = min + (i + 1) * step;
+                const low = min + i * step, high = min + (i + 1) * step;
                 const color = getColorByValue(variable, (low + high) / 2, min, max);
-                const label = nombresRangos[i] || `${low.toFixed(1)} – ${high.toFixed(1)}`;
-                html += `<div class="legend-item">
-                    <div class="legend-color" style="background:${color};"></div>
-                    <span class="legend-text">${label} (${low.toFixed(1)} – ${high.toFixed(1)})</span>
-                </div>`;
+                html += `<div class="legend-item"><div class="legend-color" style="background:${color};"></div><span class="legend-text">${nombresRangos[i] || `${low.toFixed(1)} – ${high.toFixed(1)}`} (${low.toFixed(1)} – ${high.toFixed(1)})</span></div>`;
             }
         
             html += `<div class="legend-desc">💡 ${descripcionIndicador[variable] || ''}</div>`;
@@ -1476,7 +1302,7 @@
         }
 
         // ================================================================
-        // 12. CARGA DEL GEOJSON
+        // 13. CARGA DEL GEOJSON Y EVENTOS
         // ================================================================
         async function loadGeoJSON() {
             try {
@@ -1485,9 +1311,7 @@
                 const data = await response.json();
                 geoJsonData = data;
                 allFeatures = data.features;
-                console.log('✅ GeoJSON cargado:', allFeatures.length, 'features');
 
-                // Inicializar filtros
                 const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 for (const cat of categories) filtrosActivos[cat] = true;
                 for (let i = 0; i < 6; i++) filtrosActivos[`rango_${i}`] = true;
@@ -1500,52 +1324,32 @@
                 const bounds = L.geoJSON(data).getBounds();
                 if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
             } catch (error) {
-                console.error('❌ Error:', error);
                 document.getElementById('info-box').innerHTML = `
                     <div style="color:#b94a4a;font-weight:bold;">⚠️ Error al cargar los datos</div>
                     <div style="font-size:10px;margin-top:2px;">${error.message}</div>
-                    <div style="font-size:10px;margin-top:2px;">Asegúrate de que <strong>vivienda_2023.geojson</strong> esté en la misma carpeta.</div>
+                    <div style="font-size:10px;margin-top:2px;">Recuerda que debes abrir el HTML desde un servidor local (ej. Live Server en VS Code).</div>
                 `;
             }
         }
 
-        // ================================================================
-        // 13. EVENTOS
-        // ================================================================
-        
-        // SELECTOR DE INDICADORES
         document.getElementById('variable-select').addEventListener('change', function(e) {
-            const nuevaVariable = e.target.value;
-            console.log(`🔄 Cambiando indicador a: ${nuevaVariable}`);
-            currentVariable = nuevaVariable;
+            currentVariable = e.target.value;
             document.getElementById('searchInput').value = '';
-            construirFiltros(nuevaVariable);
+            construirFiltros(currentVariable);
             updateMap();
-            document.getElementById('info-label').textContent = variableLabels[nuevaVariable] || nuevaVariable;
+            document.getElementById('info-label').textContent = variableLabels[currentVariable] || currentVariable;
             document.getElementById('info-value').textContent = 'Clic en un polígono para detalles';
         });
         
-        // SELECTOR DE MAPA BASE (¡NUEVO!)
         document.getElementById('map-select').addEventListener('change', function(e) {
-            const value = e.target.value;
-            console.log(`🗺️ Cambiando a mapa: ${value}`);
-            
-            // Eliminar todas las capas base
             if (map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
             if (map.hasLayer(osmLayer)) map.removeLayer(osmLayer);
             if (map.hasLayer(topoLayer)) map.removeLayer(topoLayer);
-            
-            // Añadir la seleccionada
-            if (value === 'satellite') {
-                satelliteLayer.addTo(map);
-            } else if (value === 'osm') {
-                osmLayer.addTo(map);
-            } else if (value === 'topo') {
-                topoLayer.addTo(map);
-            }
+            if (e.target.value === 'satellite') satelliteLayer.addTo(map);
+            else if (e.target.value === 'osm') osmLayer.addTo(map);
+            else if (e.target.value === 'topo') topoLayer.addTo(map);
         });
         
-        // MODO POLÍGONOS
         document.getElementById('btn-polygon').addEventListener('click', function() {
             currentMode = 'polygon';
             this.classList.add('active');
@@ -1555,7 +1359,6 @@
             updateMap();
         });
         
-        // MODO CALOR
         document.getElementById('btn-heatmap').addEventListener('click', function() {
             currentMode = 'heatmap';
             this.classList.add('active');
@@ -1564,127 +1367,38 @@
             updateMap();
         });
         
-        // BUSCADOR (Enter)
         document.getElementById('searchInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') buscarPoligonos();
         });
         
-        // MODAL ESTADÍSTICAS
         document.getElementById('statsModal').addEventListener('click', function(e) {
             if (e.target === this) closeStats();
         });
         
-        // CONTROLES DE HEATMAP
         const radiusSlider = document.getElementById('radius-slider');
         const blurSlider = document.getElementById('blur-slider');
-        const radiusVal = document.getElementById('radius-val');
-        const blurVal = document.getElementById('blur-val');
         let heatmapTimeout = null;
         
         radiusSlider.addEventListener('input', function(e) {
-            radiusVal.innerText = e.target.value;
+            document.getElementById('radius-val').innerText = e.target.value;
             clearTimeout(heatmapTimeout);
-            heatmapTimeout = setTimeout(() => {
-                actualizarHeatmap();
-            }, 100);
+            heatmapTimeout = setTimeout(actualizarHeatmap, 100);
         });
         
         blurSlider.addEventListener('input', function(e) {
-            blurVal.innerText = e.target.value;
+            document.getElementById('blur-val').innerText = e.target.value;
             clearTimeout(heatmapTimeout);
-            heatmapTimeout = setTimeout(() => {
-                actualizarHeatmap();
-            }, 100);
+            heatmapTimeout = setTimeout(actualizarHeatmap, 100);
         });
         
-        // EXPORTAR FUNCIONES GLOBALES
         window.toggleAllFiltros = toggleAllFiltros;
         window.resetFiltros = resetFiltros;
         window.buscarPoligonos = buscarPoligonos;
         window.exportarCSV = exportarCSV;
         window.mostrarEstadisticas = mostrarEstadisticas;
         window.closeStats = closeStats;
-        
-        // Función para actualizar el heatmap
-        function actualizarHeatmap() {
-            // Verificar que el heatmap existe
-            if (!heatmapLayer || currentMode !== 'heatmap') {
-                console.warn('⚠️ Heatmap no disponible para actualizar');
-                return;
-            }
-            
-            const radius = parseInt(radiusSlider.value);
-            const blur = parseFloat(blurSlider.value) / 40;
-            
-            // Actualizar configuración global
-            heatmapConfig.radius = radius;
-            heatmapConfig.blur = blur;
-            
-            try {
-                // Método 1: Usar _heatmap (común en heatmap.js)
-                if (heatmapLayer._heatmap) {
-                    heatmapLayer._heatmap.configure({
-                        radius: radius,
-                        blur: blur
-                    });
-                    if (heatmapLayer._update) {
-                        heatmapLayer._update();
-                    }
-                }
-                // Método 2: Usar el método setData para forzar actualización
-                else {
-                    // Recrear el heatmap si no se puede actualizar
-                    console.log('🔄 Recreando heatmap...');
-                    const currentData = heatmapLayer._data;
-                    if (currentData) {
-                        map.removeLayer(heatmapLayer);
-                        heatmapLayer = new HeatmapOverlay(heatmapConfig);
-                        map.addLayer(heatmapLayer);
-                        heatmapLayer.setData(currentData);
-                    }
-                }
-                console.log(`✅ Heatmap actualizado: radius=${radius}, blur=${blur.toFixed(3)}`);
-            } catch (e) {
-                console.warn('⚠️ Error al actualizar heatmap:', e);
-                // Recrear el heatmap como fallback
-                if (currentMode === 'heatmap' && geoJsonData) {
-                    updateMap();
-                }
-            }
-        }
-        
-        // Eventos de los sliders con debounce
-        radiusSlider.addEventListener('input', function(e) {
-            radiusVal.innerText = e.target.value;
-            clearTimeout(heatmapTimeout);
-            heatmapTimeout = setTimeout(() => {
-                actualizarHeatmap();
-            }, 100);
-        });
-        
-        blurSlider.addEventListener('input', function(e) {
-            blurVal.innerText = e.target.value;
-            clearTimeout(heatmapTimeout);
-            heatmapTimeout = setTimeout(() => {
-                actualizarHeatmap();
-            }, 100);
-        });
-        
-        // Inicializar valores
-        radiusVal.innerText = radiusSlider.value;
-        blurVal.innerText = blurSlider.value;
 
-        // ================================================================
-        // 14. INICIO
-        // ================================================================
         loadGeoJSON();
-        // Sincronizar sliders con configuración inicial
-        document.getElementById('radius-slider').value = heatmapConfig.radius;
-        document.getElementById('radius-val').innerText = heatmapConfig.radius;
-        document.getElementById('blur-slider').value = Math.round(heatmapConfig.blur * 40);
-        document.getElementById('blur-val').innerText = Math.round(heatmapConfig.blur * 40);
-        console.log('🗺️ Mapa interactivo iniciado – RAUL VIQUEZ');
     </script>
-
 </body>
 </html>
