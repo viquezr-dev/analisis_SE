@@ -1336,12 +1336,14 @@
             
             heatmapConfig.radius = radius;
             heatmapConfig.blur = blur;
+            heatmapConfig.scaleRadius = false;  // ✅ MANTENER false
             
             try {
                 if (heatmapLayer._heatmap) {
                     heatmapLayer._heatmap.configure({
                         radius: radius,
-                        blur: blur
+                        blur: blur,
+                        scaleRadius: false
                     });
                     if (heatmapLayer._update) {
                         heatmapLayer._update();
