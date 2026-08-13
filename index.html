@@ -476,23 +476,35 @@
         // ================================================================
         const map = L.map('map', { center: [8.0, -80.0], zoom: 7 });
 
+        // Definir capas base
         const satelliteLayer = L.tileLayer(
             'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 attribution: 'Tiles &copy; Esri',
                 maxZoom: 19
             }
         );
-
+        
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors',
             maxZoom: 19
         });
-
+        
         const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenTopoMap',
             maxZoom: 17
         });
-
+        
+        // Crear objeto de capas base para el control de Leaflet (opcional)
+        const baseLayers = {
+            '🛰️ Satélite': satelliteLayer,
+            '🌍 OpenStreetMap': osmLayer,
+            '🗺️ Topográfico': topoLayer
+        };
+        
+        // Añadir control de capas (selector nativo de Leaflet)
+        L.control.layers(baseLayers).addTo(map);
+        
+        // Añadir capa por defecto (satélite)
         satelliteLayer.addTo(map);
 
         // ================================================================
