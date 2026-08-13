@@ -3,21 +3,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Estudio Socioeconómico - Vivienda 2023</title>
     
-    <!-- 1. Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <!-- 2. Chart.js (opcional, no depende de Leaflet) -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    
-    <!-- 3. Turf.js (opcional) -->
-    <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
-    
-       
-    <!-- 5. Heatmap.js (dependencia de leaflet-heatmap) -->
-    <script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/build/heatmap.min.js"></script>
-    
-    <!-- 6. leaflet-heatmap.js (plugin de Leaflet) - DEBE IR DESPUÉS DE Leaflet Y heatmap.js -->
-    <script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/plugins/leaflet-heatmap/leaflet-heatmap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/build/heatmap.min.js"></script>
+
+<!-- ✅ Leaflet PRIMERO -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- ✅ leaflet-heatmap.js DESPUÉS de Leaflet -->
+<script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/plugins/leaflet-heatmap/leaflet-heatmap.js"></script>
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -465,8 +460,6 @@
 
     <div class="footer">Datos: Estudio Socioeconómico 2023 – RAUL VIQUEZ</div>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script>
         // ================================================================
@@ -513,9 +506,10 @@
         // 3. INICIALIZAR HEATMAP (SEGUNDO PLANO)
         // ================================================================
         function initHeatmap() {
+            // Verificar si HeatmapOverlay está disponible
             if (typeof HeatmapOverlay === 'undefined') {
-                console.warn('⚠️ HeatmapOverlay no está disponible. Reintentando...');
-                setTimeout(initHeatmap, 500);
+                console.warn('⚠️ HeatmapOverlay no está disponible. El mapa de calor no funcionará.');
+                console.log('💡 Asegúrate de que leaflet-heatmap.js esté cargado correctamente.');
                 return;
             }
             
@@ -530,6 +524,10 @@
                 lngField: 'lng',
                 valueField: 'count'
             };
+            
+            heatmapLayer = new HeatmapOverlay(heatmapConfig);
+            console.log('✅ Heatmap inicializado correctamente');
+        }
             
             heatmapLayer = new HeatmapOverlay(heatmapConfig);
             console.log('✅ Heatmap inicializado correctamente');
@@ -785,6 +783,37 @@
             actualizarContadores();
         }
 
+
+        // ================================================================
+        // 5. FUNCIONES DE FILTROS (VERSIÓN COMPLETA)
+        // ================================================================
+        function getFiltros() {
+            const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
+            const activos = {};
+            checkboxes.forEach(cb => { activos[cb.value] = cb.checked; });
+            return activos;
+        }
+        
+        function aplicarFiltros(features, variable) {
+            const activos = getFiltros();
+            const algunActivo = Object.values(activos).some(v => v === true);
+            if (!algunActivo) return [];
+        
+            return features.filter(f => {
+                let key;
+                if (variable === 'CAT_DENS') {
+                    key = f.properties[variable] || 'SIN_DATOS';
+                    return activos[key] !== false;
+                } else {
+                    const val = parseFloat(f.properties[variable]);
+                    if (isNaN(val) || val === null) return false;
+                    const index = getRangoIndex(variable, val);
+                    key = `rango_${index}`;
+                    return activos[key] !== false;
+                }
+            });
+        }
+        
         // ================================================================
         // ACTUALIZAR HEATMAP CON NUEVA CONFIGURACIÓN (VERSIÓN CORREGIDA)
         // ================================================================
@@ -1501,6 +1530,7 @@
         // SELECTOR DE MAPA BASE (¡NUEVO!)
         document.getElementById('map-select').addEventListener('change', function(e) {
             const value = e.target.value;
+            console.log(`🗺️ Cambiando a mapa: ${value}`);
             
             // Eliminar todas las capas base
             if (map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
