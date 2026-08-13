@@ -428,7 +428,7 @@
             <option value="DENS_POB">👥 Densidad poblacional</option>
             <option value="VIV_OCUP">🏠 Viviendas ocupadas</option>
             <option value="PORC_OCU">📊 % Ocupación</option>
-            <option value="PERS_VIV">👤 Pers./viv. ocupada</option>
+            <option value="PERS_X_VIV">👤 Pers./viv. ocupada</option>
         </select>
 
         <!-- Buscador -->
@@ -506,6 +506,7 @@
         let currentFeaturesFiltradas = [];
         let currentMode = 'polygon';
         let heatmapLayer = null;
+        let heatmapActive = false;
         let heatmapConfig = {
             radius: 30,
             maxOpacity: 0.85,
@@ -566,7 +567,7 @@
             'DENS_POB': 'Densidad poblacional (hab/km²)',
             'VIV_OCUP': 'Viviendas ocupadas',
             'PORC_OCU': '% Ocupación',
-            'PERS_VIV': 'Personas por vivienda ocupada'
+            'PERS_X_VIV': 'Personas por vivienda ocupada'
         };
 
         const descripcionIndicador = {
@@ -574,7 +575,7 @@
             'DENS_POB': 'Número de habitantes por kilómetro cuadrado. Indica la concentración poblacional.',
             'VIV_OCUP': 'Cantidad de viviendas actualmente habitadas. Excluye viviendas desocupadas, en construcción o abandonadas.',
             'PORC_OCU': 'Porcentaje de viviendas ocupadas respecto al total. Valores altos indican baja desocupación.',
-            'PERS_VIV': 'Promedio de personas por vivienda ocupada. Valores altos pueden indicar hacinamiento.'
+            'PERS_X_VIV': 'Promedio de personas por vivienda ocupada. Valores altos pueden indicar hacinamiento.'
         };
 
         // ============================================================
@@ -684,7 +685,7 @@
                 return 4;
             }
             
-            if (variable === 'PERS_VIV') {
+            if (variable === 'PERS_X_VIV') {
                 if (value < 1.2) return 0;
                 if (value < 2.4) return 1;
                 if (value < 3.6) return 2;
@@ -728,7 +729,7 @@
                 return colores[colores.length - 1];
             }
             
-            if (variable === 'PERS_VIV') {
+            if (variable === 'PERS_X_VIV') {
                 const colores = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
                 if (value < 1.2) return colores[0];
                 if (value < 2.4) return colores[1];
@@ -753,7 +754,7 @@
             if (variable === 'PORC_OCU') {
                 return ['Muy bajo (0-20%)', 'Bajo (20-40%)', 'Medio (40-60%)', 'Alto (60-80%)', 'Muy alto (80-100%)'];
             }
-            if (variable === 'PERS_VIV') {
+            if (variable === 'PERS_X_VIV') {
                 return ['Muy bajo (0.0-1.2)', 'Bajo (1.2-2.4)', 'Medio (2.4-3.6)', 'Alto (3.6-4.8)', 'Muy alto (4.8-6.0)'];
             }
             return ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
@@ -856,7 +857,7 @@
             if (variable === 'PORC_OCU') {
                 return ['#fdd0a2', '#fdae6b', '#f16913', '#d94801', '#8c2d04'];
             }
-            if (variable === 'PERS_VIV') {
+            if (variable === 'PERS_X_VIV') {
                 return ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
             }
             return ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
@@ -1071,8 +1072,8 @@
             if (!texto || !geoJsonData) return;
 
             const encontrados = allFeatures.filter(f => {
-                const prov = (f.properties.PROVINCIA || '').toLowerCase();
-                const dist = (f.properties.DISTRITO || '').toLowerCase();
+                const prov = (f.properties.LUPO_NOMB || '').toLowerCase();
+                const dist = (f.properties.BARR_NOMB || '').toLowerCase();
                 return prov.includes(texto) || dist.includes(texto);
             });
 
@@ -1125,8 +1126,8 @@
             const areaM2 = p.AREA || 0;
             const areaKm2 = areaM2 / 1000000;
             return `<div style="font-family:'Segoe UI',sans-serif;min-width:170px;max-width:240px;font-size:11px;">
-                <h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:12px;">${p.PROVINCIA || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
-                ${p.BARR_NOMB ? `<div style="font-size:10px;color:#666;margin-bottom:2px;">📍 ${p.BARR_NOMB}</div>` : ''}
+                <h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:12px;">${p.PROV_NOMB || 'N/D'} – Distrito: ${p.DIST_ID || 'N/D'}</h4>
+                <div style="font-size:10px;color:#666;margin-bottom:2px;">📍 Poblado: ${p.LUPO_NOMB || 'N/D'} | Barrio: ${p.BARR_NOMB || 'N/D'}</div>
                 <hr style="margin:3px 0;border:0;border-top:1px solid #ddd;">
                 <table style="width:100%;font-size:10px;line-height:1.4;">
                     <tr><td><strong>Viviendas:</strong></td><td>${p.VIVIENDA || 0}</td></tr>
@@ -1134,9 +1135,9 @@
                     <tr><td><strong>Ocupadas:</strong></td><td>${p.VIV_OCUP || 0}</td></tr>
                     <tr><td><strong>% Ocupación:</strong></td><td>${p.PORC_OCU ? p.PORC_OCU.toFixed(1) : 0}%</td></tr>
                     <tr><td><strong>Densidad:</strong></td><td>${p.DENS_POB ? p.DENS_POB.toFixed(1) : 0} hab/km²</td></tr>
-                    <tr><td><strong>Pers./viv. ocupada:</strong></td><td>${p.PERS_VIV ? p.PERS_VIV.toFixed(2) : 0}</td></tr>
+                    <tr><td><strong>Pers./viv. ocupada:</strong></td><td>${p.PERS_X_VIV ? p.PERS_X_VIV.toFixed(2) : 0}</td></tr>
                     <tr><td><strong>Categoría:</strong></td><td>${p.CAT_DENS || 'Sin datos'}</td></tr>
-                    <tr><td><strong>Área:</strong></td><td>${areaKm2.toFixed(2)} km² (${areaM2.toFixed(0)} m²)</td></tr>
+                    <tr><td><strong>Área:</strong></td><td>${areaKm2.toFixed(2)} km²</td></tr>
                 </table>
             </div>`;
         }
@@ -1152,17 +1153,17 @@
 
             const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
             const headers = ['PROVINCIA', 'DISTRITO', 'BARR_NOMB', 'VIVIENDA', 'V_PERSONAS',
-                'VIV_OCUP', 'PORC_OCU', 'DENS_POB', 'PERS_VIV', 'CAT_DENS', 'AREA_KM2'
+                'VIV_OCUP', 'PORC_OCU', 'DENS_POB', 'PERS_X_VIV', 'CAT_DENS', 'AREA_KM2'
             ];
 
             const rows = features.map(f => {
                 const p = f.properties;
                 return [
-                    p.PROVINCIA || '', p.DISTRITO || '', p.BARR_NOMB || '',
+                    p.PROV_NOMB || '', p.DIST_ID || '', p.LUPO_NOMB || '', p.BARR_NOMB || '',
                     p.VIVIENDA || 0, p.V_PERSONAS || 0, p.VIV_OCUP || 0,
                     p.PORC_OCU ? p.PORC_OCU.toFixed(1) : 0,
                     p.DENS_POB ? p.DENS_POB.toFixed(1) : 0,
-                    p.PERS_VIV ? p.PERS_VIV.toFixed(2) : 0,
+                    p.PERS_X_VIV ? p.PERS_X_VIV.toFixed(2) : 0,
                     p.CAT_DENS || '',
                     ((p.AREA || 0) / 1000000).toFixed(4)
                 ];
