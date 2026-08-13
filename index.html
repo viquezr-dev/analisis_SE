@@ -12,9 +12,7 @@
     <!-- 3. Turf.js (opcional) -->
     <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
     
-    <!-- 4. LEAFTET PRIMERO -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
+       
     <!-- 5. Heatmap.js (dependencia de leaflet-heatmap) -->
     <script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/build/heatmap.min.js"></script>
     
@@ -493,16 +491,6 @@
             attribution: '&copy; OpenTopoMap',
             maxZoom: 17
         });
-        
-        // Crear objeto de capas base para el control de Leaflet (opcional)
-        const baseLayers = {
-            '🛰️ Satélite': satelliteLayer,
-            '🌍 OpenStreetMap': osmLayer,
-            '🗺️ Topográfico': topoLayer
-        };
-        
-        // Añadir control de capas (selector nativo de Leaflet)
-        L.control.layers(baseLayers).addTo(map);
         
         // Añadir capa por defecto (satélite)
         satelliteLayer.addTo(map);
