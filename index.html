@@ -506,7 +506,7 @@
         let currentFeaturesFiltradas = [];
         let currentMode = 'polygon';
         let heatmapLayer = null;
-        let heatmapConfig = null;
+        let heatmapActive = false;
         window.toggleHeatmap = toggleHeatmap;
         let heatmapData = null;
         
@@ -901,23 +901,32 @@
 
         function toggleHeatmap() {
             heatmapActive = !heatmapActive;
+        
             const btn = document.getElementById('btn-heatmap');
-            
+        
             if (heatmapActive) {
+                currentMode = 'heatmap';
+        
                 btn.textContent = '🔥 Ocultar Calor';
                 btn.classList.add('active');
                 document.getElementById('btn-polygon').classList.remove('active');
                 document.getElementById('heatmap-controls').style.display = 'block';
+        
                 generarHeatmap();
+        
             } else {
+                currentMode = 'polygon';
+        
                 btn.textContent = '🔥 Calor';
                 btn.classList.remove('active');
                 document.getElementById('btn-polygon').classList.add('active');
                 document.getElementById('heatmap-controls').style.display = 'none';
+        
                 if (heatmapLayer) {
                     map.removeLayer(heatmapLayer);
                     heatmapLayer = null;
                 }
+        
                 updateMap();
             }
         }
@@ -1620,7 +1629,7 @@
         });
 
         document.getElementById('btn-heatmap').addEventListener('click', toggleHeatmap);
-        });
+        
 
         const radiusSlider = document.getElementById('radius-slider');
         const blurSlider = document.getElementById('blur-slider');
