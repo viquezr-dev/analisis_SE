@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="es">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -467,9 +469,6 @@
 
     <div class="footer">Datos: Estudio Socioeconómico 2023 – RAUL VIQUEZ</div>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
     <script>
         // ================================================================
         // 1. MAPA Y CAPAS BASE
@@ -507,41 +506,40 @@
         let currentFeaturesFiltradas = [];
         let currentMode = 'polygon';
         let heatmapLayer = null;
-        let heatmapConfig = null;
+        let heatmapConfig = {
+            radius: 30,
+            maxOpacity: 0.85,
+            minOpacity: 0.05,
+            scaleRadius: false,
+            useLocalExtrema: false,
+            latField: 'lat',
+            lngField: 'lng',
+            valueField: 'count',
+            blur: 0.375,
+            gradient: {
+                0.00: 'rgba(0, 0, 255, 0)',
+                0.20: 'blue',
+                0.40: 'cyan',
+                0.60: 'lime',
+                0.80: 'yellow',
+                1.00: 'red'
+            }
+        };
+        window.toggleHeatmap = toggleHeatmap;
+        let heatmapData = null;
         
         // ================================================================
-        // 3. INICIALIZAR HEATMAP (SEGUNDO PLANO)
+        // 3. INICIALIZAR HEATMAP
         // ================================================================
         function initHeatmap() {
-            if (typeof HeatmapOverlay === 'undefined') {
-                console.warn('⚠️ HeatmapOverlay no está disponible. Reintentando...');
-                setTimeout(initHeatmap, 500);
-                return;
-            }
-            
-            heatmapConfig = {
-                radius: 30,
-                maxOpacity: 0.8,
-                minOpacity: 0.05,
-                blur: 0.375,
-                scaleRadius: false,
-                useLocalExtrema: false,
-                latField: 'lat',
-                lngField: 'lng',
-                valueField: 'count'
-            };
-            
-            heatmapLayer = new HeatmapOverlay(heatmapConfig);
-            console.log('✅ Heatmap inicializado correctamente');
+            heatmapLayer = null;
+            heatmapActive = false;
+            currentMode = 'polygon';
+            console.log('✅ Heatmap listo');
         }
-        
-        // Llamar a initHeatmap después de cargar la página
-        document.addEventListener('DOMContentLoaded', function() {
-            initHeatmap();
-        });
 
         // ================================================================
-        // 3. PALETAS DE COLORES
+        // 4. PALETAS DE COLORES Y FUNCIONES DE RANGOS MEJORADAS
         // ================================================================
         const catColors = {
             'MUY_BAJA': '#fcbba1',
@@ -579,30 +577,133 @@
             'PERS_VIV': 'Promedio de personas por vivienda ocupada. Valores altos pueden indicar hacinamiento.'
         };
 
+        // ============================================================
+        // FUNCIONES MEJORADAS PARA VIV_OCUP (CUANTILES)
+        // ============================================================
+        function getRangoIndexVivOcup(valor, features) {
+            if (isNaN(valor) || valor === null || valor === 0) return 0;
+            
+            // Extraer todos los valores de VIV_OCUP que sean > 0
+            const valores = features
+                .map(f => parseFloat(f.properties['VIV_OCUP']))
+                .filter(v => !isNaN(v) && v !== null && v > 0)
+                .sort((a, b) => a - b);
+            
+            if (valores.length === 0) return 0;
+            
+            // Calcular percentiles
+            const total = valores.length;
+            const p20 = valores[Math.floor(total * 0.20)];
+            const p40 = valores[Math.floor(total * 0.40)];
+            const p60 = valores[Math.floor(total * 0.60)];
+            const p80 = valores[Math.floor(total * 0.80)];
+            
+            if (valor <= p20) return 0;      // Muy bajo (20% inferior)
+            if (valor <= p40) return 1;      // Bajo (20-40%)
+            if (valor <= p60) return 2;      // Medio (40-60%)
+            if (valor <= p80) return 3;      // Alto (60-80%)
+            return 4;                         // Muy alto (80-100% superior)
+        }
+
+        function getColorVivOcup(valor, features) {
+            if (isNaN(valor) || valor === null || valor === 0) return '#cccccc';
+            
+            const valores = features
+                .map(f => parseFloat(f.properties['VIV_OCUP']))
+                .filter(v => !isNaN(v) && v !== null && v > 0)
+                .sort((a, b) => a - b);
+            
+            if (valores.length === 0) return '#cccccc';
+            
+            const total = valores.length;
+            const p20 = valores[Math.floor(total * 0.20)];
+            const p40 = valores[Math.floor(total * 0.40)];
+            const p60 = valores[Math.floor(total * 0.60)];
+            const p80 = valores[Math.floor(total * 0.80)];
+            
+            // Colores en escala de verdes más contrastante
+            const colores = ['#e5f5e0', '#a1d99b', '#74c476', '#41ab5d', '#006d2c'];
+            
+            if (valor <= p20) return colores[0];
+            if (valor <= p40) return colores[1];
+            if (valor <= p60) return colores[2];
+            if (valor <= p80) return colores[3];
+            return colores[4];
+        }
+
+        function obtenerNombresRangosVivOcup(features) {
+            const valores = features
+                .map(f => parseFloat(f.properties['VIV_OCUP']))
+                .filter(v => !isNaN(v) && v !== null && v > 0)
+                .sort((a, b) => a - b);
+            
+            if (valores.length === 0) {
+                return ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+            }
+            
+            const total = valores.length;
+            const p20 = valores[Math.floor(total * 0.20)];
+            const p40 = valores[Math.floor(total * 0.40)];
+            const p60 = valores[Math.floor(total * 0.60)];
+            const p80 = valores[Math.floor(total * 0.80)];
+            
+            return [
+                `Muy bajo (0-${Math.round(p20)})`,
+                `Bajo (${Math.round(p20)}-${Math.round(p40)})`,
+                `Medio (${Math.round(p40)}-${Math.round(p60)})`,
+                `Alto (${Math.round(p60)}-${Math.round(p80)})`,
+                `Muy alto (>${Math.round(p80)})`
+            ];
+        }
+
+        // ============================================================
+        // FUNCIONES PRINCIPALES MODIFICADAS
+        // ============================================================
+        function getRangoIndex(variable, value) {
+            if (isNaN(value) || value === null || value === 0) return 0;
+            
+            if (variable === 'DENS_POB') {
+                const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
+                for (let i = 0; i < limites.length - 1; i++) {
+                    if (value >= limites[i] && value < limites[i + 1]) {
+                        return i;
+                    }
+                }
+                return limites.length - 2;
+            }
+            
+            if (variable === 'VIV_OCUP') {
+                return getRangoIndexVivOcup(value, allFeatures);
+            }
+            
+            if (variable === 'PORC_OCU') {
+                if (value < 20) return 0;
+                if (value < 40) return 1;
+                if (value < 60) return 2;
+                if (value < 80) return 3;
+                return 4;
+            }
+            
+            if (variable === 'PERS_VIV') {
+                if (value < 1.2) return 0;
+                if (value < 2.4) return 1;
+                if (value < 3.6) return 2;
+                if (value < 4.8) return 3;
+                return 4;
+            }
+            
+            return 0;
+        }
+
         function getColorByValue(variable, value, min, max) {
             if (isNaN(value) || value === null || value === 0) return '#cccccc';
             
-            // ============================================================
-            // CAT_DENS: Colores fijos por categoría
-            // ============================================================
             if (variable === 'CAT_DENS') {
                 return catColors[value] || '#cccccc';
             }
             
-            // ============================================================
-            // DENS_POB: Colores específicos por rango
-            // ============================================================
             if (variable === 'DENS_POB') {
-                // Paleta de colores para densidad (rojos)
-                const coloresDensidad = [
-                    '#fcbba1',  // Muy baja (<100)
-                    '#fc9272',  // Baja (100-500)
-                    '#fb6a4a',  // Media-Baja (500-2000)
-                    '#de2d26',  // Media (2000-5000)
-                    '#a50f15',  // Alta (5000-10000)
-                    '#67000d'   // Muy alta (>10000)
-                ];
-                
+                const coloresDensidad = ['#fcbba1', '#fc9272', '#fb6a4a', '#de2d26', '#a50f15', '#67000d'];
                 const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
                 for (let i = 0; i < limites.length - 1; i++) {
                     if (value >= limites[i] && value < limites[i + 1]) {
@@ -612,23 +713,10 @@
                 return coloresDensidad[coloresDensidad.length - 1];
             }
             
-            // ============================================================
-            // VIV_OCUP: Colores en escala de verdes
-            // ============================================================
             if (variable === 'VIV_OCUP') {
-                const colores = ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
-                const limites = [0, 1600, 3200, 4800, 6400, 8000];
-                for (let i = 0; i < limites.length - 1; i++) {
-                    if (value >= limites[i] && value < limites[i + 1]) {
-                        return colores[i];
-                    }
-                }
-                return colores[colores.length - 1];
+                return getColorVivOcup(value, allFeatures);
             }
             
-            // ============================================================
-            // PORC_OCU: Colores en escala de naranjas
-            // ============================================================
             if (variable === 'PORC_OCU') {
                 const colores = ['#fdd0a2', '#fdae6b', '#f16913', '#d94801', '#8c2d04'];
                 const limites = [0, 20, 40, 60, 80, 100];
@@ -640,79 +728,6 @@
                 return colores[colores.length - 1];
             }
             
-            // ============================================================
-            // PERS_VIV: Colores en escala de púrpuras
-            // ============================================================
-           if (variable === 'PERS_VIV') {
-                const colores = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
-                const rangos = [
-                    { min: 0, max: 1.2, label: 'Muy bajo (0.0-1.2)' },
-                    { min: 1.2, max: 2.4, label: 'Bajo (1.2-2.4)' },
-                    { min: 2.4, max: 3.6, label: 'Medio (2.4-3.6)' },
-                    { min: 3.6, max: 4.8, label: 'Alto (3.6-4.8)' },
-                    { min: 4.8, max: 6.0, label: 'Muy alto (4.8-6.0)' }
-                ];
-                for (let i = 0; i < rangos.length; i++) {
-                    html += `<div class="legend-item">
-                        <div class="legend-color" style="background:${colores[i]};"></div>
-                        <span class="legend-text">${rangos[i].label}</span>
-                    </div>`;
-                }
-                html += `<div class="legend-desc">💡 ${descripcionIndicador[variable] || ''}</div>`;
-                legendDiv.innerHTML = html;
-                return;
-            }
-            
-            // ============================================================
-            // OTRAS VARIABLES: Escala genérica
-            // ============================================================
-            const palette = ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
-            const t = (value - min) / (max - min + 0.0001);
-            const index = Math.min(Math.floor(t * palette.length), palette.length - 1);
-            return palette[index];
-        }
-
-        function getRangoIndex(variable, value) {
-            if (isNaN(value) || value === null || value === 0) return 0;
-            
-            // ============================================================
-            // DENS_POB: Rangos específicos de densidad
-            // ============================================================
-            if (variable === 'DENS_POB') {
-                const limites = [0, 100, 500, 2000, 5000, 10000, 20000];
-                for (let i = 0; i < limites.length - 1; i++) {
-                    if (value >= limites[i] && value < limites[i + 1]) {
-                        return i;
-                    }
-                }
-                return limites.length - 2;
-            }
-            
-            // ============================================================
-            // VIV_OCUP: Viviendas ocupadas (0-8000)
-            // ============================================================
-            if (variable === 'VIV_OCUP') {
-                if (value < 1600) return 0;      // Muy bajo
-                if (value < 3200) return 1;      // Bajo
-                if (value < 4800) return 2;      // Medio
-                if (value < 6400) return 3;      // Alto
-                return 4;                         // Muy alto
-            }
-            
-            // ============================================================
-            // PORC_OCU: Porcentaje de ocupación (0-100)
-            // ============================================================
-            if (variable === 'PORC_OCU') {
-                if (value < 20) return 0;        // Muy bajo
-                if (value < 40) return 1;        // Bajo
-                if (value < 60) return 2;        // Medio
-                if (value < 80) return 3;        // Alto
-                return 4;                         // Muy alto
-            }
-            
-            // ============================================================
-            // PERS_VIV: Personas por vivienda ocupada (0-6)
-            // ============================================================
             if (variable === 'PERS_VIV') {
                 const colores = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
                 if (value < 1.2) return colores[0];
@@ -722,16 +737,30 @@
                 return colores[4];
             }
             
-            // ============================================================
-            // OTRAS VARIABLES: Rango automático (fallback)
-            // ============================================================
-            // Para cualquier otra variable, dividir en 5 rangos iguales
-            // Usamos los valores mínimos y máximos de los datos
-            return 0;
+            const palette = ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
+            const t = (value - min) / (max - min + 0.0001);
+            const index = Math.min(Math.floor(t * palette.length), palette.length - 1);
+            return palette[index];
+        }
+
+        function obtenerNombresRangos(variable) {
+            if (variable === 'DENS_POB') {
+                return ['Muy baja (<100)', 'Baja (100-500)', 'Media-Baja (500-2000)', 'Media (2000-5000)', 'Alta (5000-10000)', 'Muy alta (>10000)'];
+            }
+            if (variable === 'VIV_OCUP') {
+                return obtenerNombresRangosVivOcup(allFeatures);
+            }
+            if (variable === 'PORC_OCU') {
+                return ['Muy bajo (0-20%)', 'Bajo (20-40%)', 'Medio (40-60%)', 'Alto (60-80%)', 'Muy alto (80-100%)'];
+            }
+            if (variable === 'PERS_VIV') {
+                return ['Muy bajo (0.0-1.2)', 'Bajo (1.2-2.4)', 'Medio (2.4-3.6)', 'Alto (3.6-4.8)', 'Muy alto (4.8-6.0)'];
+            }
+            return ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
         }
 
         // ================================================================
-        // 4. FUNCIONES DE FILTROS
+        // 5. FUNCIONES DE FILTROS
         // ================================================================
         function getFiltros() {
             const checkboxes = document.querySelectorAll('.filtro-checkbox input[type="checkbox"]');
@@ -761,31 +790,12 @@
         }
 
         // ================================================================
-        // 5. CONSTRUIR FILTROS
+        // 6. CONSTRUIR FILTROS
         // ================================================================
         function construirFiltros(variable) {
             const container = document.getElementById('filtros-container');
             let html = '';
-            if (variable === 'PERS_VIV') {
-                const nombresRangos = obtenerNombresRangos(variable);
-                const colores = ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
-                html = `<h4>🔍 Filtrar por rango:</h4>
-                    <div class="select-all-container">
-                        <button onclick="toggleAllFiltros(true)">✅ Todo</button>
-                        <button onclick="toggleAllFiltros(false)">❌ Nada</button>
-                    </div>`;
-                for (let i = 0; i < nombresRangos.length; i++) {
-                    const key = `rango_${i}`;
-                    const checked = filtrosActivos[key] !== false;
-                    html += `<label class="filtro-checkbox">
-                        <input type="checkbox" value="${key}" ${checked ? 'checked' : ''} />
-                        <span class="color-muestra" style="background:${colores[i]};"></span>
-                        <span>${nombresRangos[i]}</span>
-                        <span class="count-badge" id="count-${key}">0</span>
-                    </label>`;
-                }
-            }
-           
+            
             if (variable === 'CAT_DENS') {
                 const items = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 html = `<h4>🔍 Filtrar por categoría:</h4>
@@ -804,6 +814,7 @@
                 }
             } else {
                 const nombresRangos = obtenerNombresRangos(variable);
+                const colores = getColoresRangos(variable);
                 html = `<h4>🔍 Filtrar por rango:</h4>
                     <div class="select-all-container">
                         <button onclick="toggleAllFiltros(true)">✅ Todo</button>
@@ -812,8 +823,7 @@
                 for (let i = 0; i < nombresRangos.length; i++) {
                     const key = `rango_${i}`;
                     const checked = filtrosActivos[key] !== false;
-                    // Color de muestra según variable
-                    const color = getColorByValue(variable, i / (nombresRangos.length - 1), 0, 1);
+                    const color = colores[i] || '#cccccc';
                     html += `<label class="filtro-checkbox">
                         <input type="checkbox" value="${key}" ${checked ? 'checked' : ''} />
                         <span class="color-muestra" style="background:${color};"></span>
@@ -826,7 +836,6 @@
             html += `<button class="btn-reset-filtros" onclick="resetFiltros()">🔄 Restablecer filtros</button>`;
             container.innerHTML = html;
             
-            // Eventos de los checkboxes
             document.querySelectorAll('.filtro-checkbox input[type="checkbox"]').forEach(cb => {
                 cb.addEventListener('change', function() {
                     filtrosActivos[this.value] = this.checked;
@@ -837,104 +846,25 @@
             actualizarContadores();
         }
 
-        // ================================================================
-        // ACTUALIZAR HEATMAP CON NUEVA CONFIGURACIÓN (VERSIÓN CORREGIDA)
-        // ================================================================
-        function actualizarHeatmap() {
-            // Verificar que el heatmap existe y está en modo calor
-            if (!heatmapLayer || currentMode !== 'heatmap') {
-                console.warn('⚠️ Heatmap no disponible para actualizar');
-                return;
-            }
-            
-            // Obtener valores de los sliders
-            const radius = parseInt(document.getElementById('radius-slider').value);
-            const blur = parseFloat(document.getElementById('blur-slider').value) / 40;
-            
-            // Actualizar configuración global
-            heatmapConfig.radius = radius;
-            heatmapConfig.blur = blur;
-            
-            // Reconfigurar el heatmap usando el método correcto
-            try {
-                // Heatmap.js usa h337 para configurar
-                if (heatmapLayer._heatmap) {
-                    // Actualizar configuración del heatmap interno
-                    heatmapLayer._heatmap.configure({
-                        radius: radius,
-                        blur: blur
-                    });
-                    // Forzar redibujo
-                    heatmapLayer._update();
-                } else if (heatmapLayer._renderer) {
-                    // Algunas versiones usan _renderer
-                    heatmapLayer._renderer.configure({
-                        radius: radius,
-                        blur: blur
-                    });
-                    heatmapLayer._update();
-                }
-                console.log(`✅ Heatmap actualizado: radius=${radius}, blur=${blur.toFixed(3)}`);
-            } catch (e) {
-                console.warn('⚠️ Error al actualizar heatmap:', e);
-                // Si falla, recrear el heatmap
-                if (currentMode === 'heatmap') {
-                    console.log('🔄 Recreando heatmap...');
-                    updateMap();
-                }
-            }
-        }
-        
-        // ================================================================
-        // OBTENER NOMBRES DE RANGOS SEGÚN VARIABLE
-        // ================================================================
-        function obtenerNombresRangos(variable) {
+        function getColoresRangos(variable) {
             if (variable === 'DENS_POB') {
-                return [
-                    'Muy baja (<100)',
-                    'Baja (100-500)',
-                    'Media-Baja (500-2000)',
-                    'Media (2000-5000)',
-                    'Alta (5000-10000)',
-                    'Muy alta (>10000)'
-                ];
+                return ['#fcbba1', '#fc9272', '#fb6a4a', '#de2d26', '#a50f15', '#67000d'];
             }
             if (variable === 'VIV_OCUP') {
-                return [
-                    'Muy bajo (0-1600)',
-                    'Bajo (1600-3200)',
-                    'Medio (3200-4800)',
-                    'Alto (4800-6400)',
-                    'Muy alto (6400-8000)'
-                ];
+                return ['#e5f5e0', '#a1d99b', '#74c476', '#41ab5d', '#006d2c'];
             }
             if (variable === 'PORC_OCU') {
-                return [
-                    'Muy bajo (0-20%)',
-                    'Bajo (20-40%)',
-                    'Medio (40-60%)',
-                    'Alto (60-80%)',
-                    'Muy alto (80-100%)'
-                ];
+                return ['#fdd0a2', '#fdae6b', '#f16913', '#d94801', '#8c2d04'];
             }
             if (variable === 'PERS_VIV') {
-                return [
-                    'Muy bajo (0.0-1.2)',
-                    'Bajo (1.2-2.4)',
-                    'Medio (2.4-3.6)',
-                    'Alto (3.6-4.8)',
-                    'Muy alto (4.8-6.0)'
-                ];
+                return ['#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
             }
-            // Fallback
-            return ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+            return ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
         }
-        
-        
+
         function actualizarContadores() {
             const variable = currentVariable;
             
-            // CAT_DENS: Contar por categorías
             if (variable === 'CAT_DENS') {
                 const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 for (const cat of categories) {
@@ -945,7 +875,6 @@
                 return;
             }
             
-            // Variables numéricas: Contar por rangos
             const nombresRangos = obtenerNombresRangos(variable);
             const stepCount = nombresRangos.length;
             
@@ -988,8 +917,154 @@
             updateMap();
         }
 
+
+        function toggleHeatmap() {
+            heatmapActive = !heatmapActive;
+            const btn = document.getElementById('btn-heatmap');
+
+            if (heatmapActive) {
+                currentMode = 'heatmap';
+                btn.textContent = '🔥 Ocultar Calor';
+                btn.classList.add('active');
+                document.getElementById('btn-polygon').classList.remove('active');
+                document.getElementById('heatmap-controls').style.display = 'block';
+                generarHeatmap();
+            } else {
+                currentMode = 'polygon';
+                btn.textContent = '🔥 Calor';
+                btn.classList.remove('active');
+                document.getElementById('btn-polygon').classList.add('active');
+                document.getElementById('heatmap-controls').style.display = 'none';
+
+                if (heatmapLayer) {
+                    map.removeLayer(heatmapLayer);
+                    heatmapLayer = null;
+                }
+                updateMap();
+            }
+        }
+
+        function generarHeatmap() {
+            if (!geoJsonData || !allFeatures || allFeatures.length === 0) {
+                console.warn('⚠️ No hay datos para generar el mapa de calor');
+                return;
+            }
+
+            const features = currentFeaturesFiltradas.length > 0
+                ? currentFeaturesFiltradas
+                : allFeatures;
+            const variable = currentVariable;
+
+            if (features.length === 0) {
+                console.warn('⚠️ No hay datos con los filtros seleccionados');
+                return;
+            }
+
+            const catOrder = {
+                'MUY_BAJA': 1,
+                'BAJA': 2,
+                'MEDIA_BAJA': 3,
+                'MEDIA': 4,
+                'ALTA': 5,
+                'MUY_ALTA': 6,
+                'SIN_DATOS': 0
+            };
+
+            const puntos = [];
+
+            // Obtener valores válidos primero para determinar la escala del heatmap.
+            const valores = features.map(f => {
+                if (variable === 'CAT_DENS') {
+                    return catOrder[f.properties[variable]] || 0;
+                }
+                return parseFloat(f.properties[variable]);
+            }).filter(v => Number.isFinite(v) && v > 0);
+
+            if (valores.length === 0) {
+                console.warn('⚠️ No hay valores positivos para el indicador seleccionado');
+                return;
+            }
+
+            const maxValor = Math.max(...valores);
+            const minValor = Math.min(...valores);
+
+            // Crear puntos usando Turf para obtener centroides correctos.
+            for (const f of features) {
+                let valor;
+
+                if (variable === 'CAT_DENS') {
+                    valor = catOrder[f.properties[variable]] || 0;
+                } else {
+                    valor = parseFloat(f.properties[variable]);
+                }
+
+                if (!Number.isFinite(valor) || valor <= 0) continue;
+
+                try {
+                    const centroid = turf.centroid(f);
+                    const coords = centroid.geometry.coordinates;
+                    if (!coords || coords.length < 2) continue;
+
+                    puntos.push({
+                        lat: coords[1],
+                        lng: coords[0],
+                        count: valor
+                    });
+                } catch (e) {
+                    console.warn('⚠️ No se pudo calcular centroide:', e);
+                }
+            }
+
+            if (puntos.length === 0) {
+                console.warn('⚠️ No se pudieron generar puntos para el heatmap');
+                return;
+            }
+
+            // Eliminar capa anterior antes de crear la nueva.
+            if (heatmapLayer) {
+                map.removeLayer(heatmapLayer);
+                heatmapLayer = null;
+            }
+
+            // Leer los controles actuales.
+            const radius = parseInt(document.getElementById('radius-slider').value, 10) || 30;
+            const blurValue = parseInt(document.getElementById('blur-slider').value, 10) || 15;
+            const blur = Math.max(0.05, Math.min(1, blurValue / 40));
+
+            heatmapConfig.radius = radius;
+            heatmapConfig.blur = blur;
+            heatmapConfig.maxOpacity = 0.85;
+            heatmapConfig.minOpacity = 0.05;
+            heatmapConfig.scaleRadius = false;
+            heatmapConfig.useLocalExtrema = false;
+
+            heatmapLayer = new HeatmapOverlay(heatmapConfig);
+            map.addLayer(heatmapLayer);
+            heatmapLayer.setData({
+                max: maxValor,
+                min: minValor,
+                data: puntos
+            });
+
+            // Leyenda del heatmap.
+            document.getElementById('legend').innerHTML = `
+                <div class="legend-title">🔥 Mapa de Calor</div>
+                <div class="gradient-bar"></div>
+                <div class="gradient-labels">
+                    <span>Bajo (${minValor.toFixed(1)})</span>
+                    <span>Alto (${maxValor.toFixed(1)})</span>
+                </div>
+                <div class="legend-desc">💡 ${puntos.length} puntos · ${variableLabels[variable] || variable}</div>
+            `;
+
+            document.getElementById('info-label').textContent = variableLabels[variable] || variable;
+            document.getElementById('info-value').textContent = `${puntos.length} puntos en calor`;
+
+            console.log(`🔥 Heatmap generado: ${puntos.length} puntos | radio=${radius}px | blur=${blur.toFixed(3)}`);
+        }
+
         // ================================================================
-        // 6. BUSCADOR
+        // 7. BUSCADOR
         // ================================================================
         function buscarPoligonos() {
             const texto = document.getElementById('searchInput').value.toLowerCase().trim();
@@ -1011,10 +1086,8 @@
                 features: encontrados
             };
 
-            // Eliminar capa actual
             if (currentLayer) map.removeLayer(currentLayer);
 
-            // Crear capa temporal con los resultados
             currentLayer = L.geoJSON(geoJsonEncontrados, {
                 style: function(feature) {
                     let value = feature.properties[currentVariable];
@@ -1046,7 +1119,7 @@
         }
 
         // ================================================================
-        // 7. POPUP
+        // 8. POPUP
         // ================================================================
         function crearPopup(p) {
             const areaM2 = p.AREA || 0;
@@ -1069,7 +1142,7 @@
         }
 
         // ================================================================
-        // 8. EXPORTAR CSV
+        // 9. EXPORTAR CSV
         // ================================================================
         function exportarCSV() {
             if (!geoJsonData || allFeatures.length === 0) {
@@ -1107,7 +1180,7 @@
         }
 
         // ================================================================
-        // 9. ESTADÍSTICAS
+        // 10. ESTADÍSTICAS
         // ================================================================
         function mostrarEstadisticas() {
             document.getElementById('statsModal').classList.add('active');
@@ -1140,11 +1213,10 @@
                     });
                     labels = counts.map((_, i) => `${(min + i * step).toFixed(1)}-${(min + (i + 1) * step).toFixed(1)}`);
                     data = counts;
-                    colors = ['#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
+                    colors = getColoresRangos(variable);
                 }
             }
 
-            // Estadísticas numéricas
             const statsDiv = document.getElementById('statsNumbers');
             let statsHTML = '';
             if (variable !== 'CAT_DENS') {
@@ -1171,7 +1243,6 @@
             }
             statsDiv.innerHTML = statsHTML;
 
-            // Gráfico
             if (chartInstance) chartInstance.destroy();
             const ctx = document.getElementById('statsChart').getContext('2d');
             chartInstance = new Chart(ctx, {
@@ -1193,7 +1264,7 @@
         }
 
         // ================================================================
-        // 10. ACTUALIZAR MAPA
+        // 11. ACTUALIZAR MAPA
         // ================================================================
         function updateMap() {
             if (!geoJsonData) return;
@@ -1206,44 +1277,21 @@
             document.getElementById('count-mostrados').textContent = featuresFiltradas.length;
             document.getElementById('count-total').textContent = allFeatures.length;
 
-            // Limpiar capa anterior
             if (currentLayer) map.removeLayer(currentLayer);
 
-            // Modo Heatmap
             if (currentMode === 'heatmap') {
-                // Preparar datos para heatmap
-                const heatData = { max: 100, data: [] };
-                let maxVal = -Infinity;
+                // El heatmap se genera con Heatmap.js/Leaflet-Heatmap.
+                // La capa de polígonos se mantiene transparente para conservar los límites y popups.
+                generarHeatmap();
 
-                featuresFiltradas.forEach(f => {
-                    let val = parseFloat(f.properties[variable]);
-                    if (variable === 'CAT_DENS') {
-                        const catOrder = { 'MUY_BAJA': 1, 'BAJA': 2, 'MEDIA_BAJA': 3, 'MEDIA': 4, 'ALTA': 5, 'MUY_ALTA': 6 };
-                        val = catOrder[f.properties[variable]] || 0;
-                    }
-                    if (isNaN(val) || val === null) return;
-
-                    // Calcular centroide con turf
-                    try {
-                        const centroid = turf.centroid(f);
-                        const coords = centroid.geometry.coordinates;
-                        if (val > maxVal) maxVal = val;
-                        heatData.data.push({ lat: coords[1], lng: coords[0], count: val });
-                    } catch (e) {}
-                });
-
-                heatData.max = maxVal === -Infinity ? 100 : maxVal;
-                map.removeLayer(heatmapLayer);
-                heatmapLayer = new HeatmapOverlay(heatmapConfig);
-                map.addLayer(heatmapLayer);
-                heatmapLayer.setData(heatData);
-
-                // Mostrar polígonos transparentes
-                currentLayer = L.geoJSON(geoJsonData, {
+                currentLayer = L.geoJSON({
+                    type: 'FeatureCollection',
+                    features: featuresFiltradas
+                }, {
                     style: {
                         fillColor: 'transparent',
                         fillOpacity: 0.01,
-                        color: 'rgba(255,255,255,0.3)',
+                        color: 'rgba(255,255,255,0.35)',
                         weight: 1
                     },
                     onEachFeature: function(feature, layer) {
@@ -1251,23 +1299,11 @@
                     }
                 }).addTo(map);
 
-                document.getElementById('legend').innerHTML = `
-                    <div class="legend-title">🔥 Mapa de Calor</div>
-                    <div class="gradient-bar"></div>
-                    <div class="gradient-labels">
-                        <span>Bajo (${heatData.data.length > 0 ? Math.min(...heatData.data.map(d => d.count)).toFixed(1) : 0})</span>
-                        <span>Alto (${heatData.max.toFixed(1)})</span>
-                    </div>
-                    <div class="legend-desc">💡 Intensidad: ${variableLabels[variable] || variable}</div>
-                `;
-
-                updateLegend(variable, featuresFiltradas);
                 document.getElementById('info-label').textContent = variableLabels[variable] || variable;
-                document.getElementById('info-value').textContent = `${featuresFiltradas.length} puntos en calor`;
+                document.getElementById('info-value').textContent = `${featuresFiltradas.length} polígonos analizados`;
                 return;
             }
 
-            // Modo Polígonos
             const minMax = { min: 0, max: 1 };
             if (variable !== 'CAT_DENS') {
                 let min = Infinity, max = -Infinity;
@@ -1289,6 +1325,7 @@
                 style: function(feature) {
                     let value = feature.properties[variable];
                     let color = '#cccccc';
+                    
                     if (variable === 'CAT_DENS') {
                         color = catColors[value] || '#cccccc';
                     } else {
@@ -1327,17 +1364,13 @@
         }
 
         // ================================================================
-        // 11. LEYENDA PERSONALIZADA (CON CATEGORÍAS ESPECÍFICAS)
+        // 12. LEYENDA PERSONALIZADA
         // ================================================================
         function updateLegend(variable, features) {
             const legendDiv = document.getElementById('legend');
             let html = `<div class="legend-title">Leyenda</div>`;
         
-            // ============================================================
-            // MODO CALOR: Leyenda de gradiente
-            // ============================================================
             if (currentMode === 'heatmap') {
-                // Calcular min/max de los datos actuales
                 let valores = [];
                 features.forEach(f => {
                     let val = parseFloat(f.properties[variable]);
@@ -1351,7 +1384,6 @@
                 const minVal = valores.length > 0 ? Math.min(...valores) : 0;
                 const maxVal = valores.length > 0 ? Math.max(...valores) : 100;
                 
-                // Nombre del indicador para la leyenda de calor
                 let label = variableLabels[variable] || variable;
                 if (variable === 'CAT_DENS') {
                     label = 'Categoría de densidad (1-6)';
@@ -1372,11 +1404,6 @@
                 return;
             }
         
-            // ============================================================
-            // MODO POLÍGONOS: Leyenda según variable
-            // ============================================================
-            
-            // --- CAT_DENS: Categorías específicas ---
             if (variable === 'CAT_DENS') {
                 const categories = [
                     { key: 'MUY_BAJA', label: 'Muy baja (<100 hab/km²)', color: '#fcbba1' },
@@ -1398,65 +1425,13 @@
                 return;
             }
         
-            // --- DENS_POB: Rangos específicos ---
-            if (variable === 'DENS_POB') {
-            const rangos = [
-                { min: 0, max: 100, label: 'Muy baja (<100 hab/km²)' },
-                { min: 100, max: 500, label: 'Baja (100-500)' },
-                { min: 500, max: 2000, label: 'Media-Baja (500-2000)' },
-                { min: 2000, max: 5000, label: 'Media (2000-5000)' },
-                { min: 5000, max: 10000, label: 'Alta (5000-10000)' },
-                { min: 10000, max: 20000, label: 'Muy alta (>10000)' }
-            ];
+            const nombresRangos = obtenerNombresRangos(variable);
+            const colores = getColoresRangos(variable);
             
-            const coloresDensidad = ['#fcbba1', '#fc9272', '#fb6a4a', '#de2d26', '#a50f15', '#67000d'];
-            
-            for (let i = 0; i < rangos.length; i++) {
-                const r = rangos[i];
+            for (let i = 0; i < nombresRangos.length; i++) {
                 html += `<div class="legend-item">
-                    <div class="legend-color" style="background:${coloresDensidad[i]};"></div>
-                    <span class="legend-text">${r.label}</span>
-                </div>`;
-            }
-            html += `<div class="legend-desc">💡 ${descripcionIndicador[variable] || ''}</div>`;
-            legendDiv.innerHTML = html;
-            return;
-        }
-            
-        
-            // --- OTRAS VARIABLES NUMÉRICAS (VIV_OCUP, PORC_OCU, PERS_VIV) ---
-            const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
-            if (valores.length === 0) {
-                html += `<div class="legend-item">Sin datos disponibles</div>`;
-                legendDiv.innerHTML = html;
-                return;
-            }
-        
-            const min = Math.min(...valores);
-            const max = Math.max(...valores);
-            const steps = 5;
-            const step = (max - min) / steps;
-        
-            // Nombres personalizados según variable
-            let nombresRangos = [];
-            if (variable === 'VIV_OCUP') {
-                nombresRangos = ['Muy pocas', 'Pocas', 'Medias', 'Muchas', 'Muchísimas'];
-            } else if (variable === 'PORC_OCU') {
-                nombresRangos = ['Muy bajo (%)', 'Bajo (%)', 'Medio (%)', 'Alto (%)', 'Muy alto (%)'];
-            } else if (variable === 'PERS_VIV') {
-                nombresRangos = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
-            } else {
-                nombresRangos = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
-            }
-        
-            for (let i = 0; i < steps; i++) {
-                const low = min + i * step;
-                const high = min + (i + 1) * step;
-                const color = getColorByValue(variable, (low + high) / 2, min, max);
-                const label = nombresRangos[i] || `${low.toFixed(1)} – ${high.toFixed(1)}`;
-                html += `<div class="legend-item">
-                    <div class="legend-color" style="background:${color};"></div>
-                    <span class="legend-text">${label} (${low.toFixed(1)} – ${high.toFixed(1)})</span>
+                    <div class="legend-color" style="background:${colores[i]};"></div>
+                    <span class="legend-text">${nombresRangos[i]}</span>
                 </div>`;
             }
         
@@ -1465,7 +1440,21 @@
         }
 
         // ================================================================
-        // 12. CARGA DEL GEOJSON
+        // 13. ACTUALIZAR HEATMAP CON NUEVA CONFIGURACIÓN
+        // ================================================================
+        function actualizarHeatmap() {
+            if (!heatmapActive || currentMode !== 'heatmap') {
+                console.warn('⚠️ Heatmap no activo para actualizar');
+                return;
+            }
+
+            // Regenerar la capa con los nuevos parámetros.
+            // Esto evita depender de APIs internas (_heatmap/_update) de Heatmap.js.
+            generarHeatmap();
+        }
+
+        // ================================================================
+        // 14. CARGA DEL GEOJSON
         // ================================================================
         async function loadGeoJSON() {
             try {
@@ -1476,7 +1465,6 @@
                 allFeatures = data.features;
                 console.log('✅ GeoJSON cargado:', allFeatures.length, 'features');
 
-                // Inicializar filtros
                 const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
                 for (const cat of categories) filtrosActivos[cat] = true;
                 for (let i = 0; i < 6; i++) filtrosActivos[`rango_${i}`] = true;
@@ -1499,109 +1487,63 @@
         }
 
         // ================================================================
-        // 13. EVENTOS
+        // 15. EVENTOS Y CONTROLES
         // ================================================================
-        document.getElementById('variable-select').addEventListener('change', function(e) {
-            const nuevaVariable = e.target.value;
-            console.log(`🔄 Cambiando indicador a: ${nuevaVariable}`);
+        document.getElementById('map-select').addEventListener('change', function(e) {
+            const value = e.target.value;
             
-            // Actualizar variable global
-            currentVariable = nuevaVariable;
+            if (map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
+            if (map.hasLayer(osmLayer)) map.removeLayer(osmLayer);
+            if (map.hasLayer(topoLayer)) map.removeLayer(topoLayer);
             
-            // Limpiar búsqueda
-            document.getElementById('searchInput').value = '';
-            
-            // Reconstruir filtros para la nueva variable
-            construirFiltros(nuevaVariable);
-            
-            // Actualizar el mapa
-            updateMap();
-            
-            // Actualizar la etiqueta del info box
-            const label = variableLabels[nuevaVariable] || nuevaVariable;
-            document.getElementById('info-label').textContent = label;
-            document.getElementById('info-value').textContent = 'Clic en un polígono para detalles';
-            
-            console.log(`✅ Indicador cambiado a: ${label}`);
+            if (value === 'satellite') {
+                satelliteLayer.addTo(map);
+            } else if (value === 'osm') {
+                osmLayer.addTo(map);
+            } else if (value === 'topo') {
+                topoLayer.addTo(map);
+            }
         });
 
-        // Modo Polígonos
+        document.getElementById('variable-select').addEventListener('change', function(e) {
+            const nuevaVariable = e.target.value;
+            currentVariable = nuevaVariable;
+            document.getElementById('searchInput').value = '';
+            construirFiltros(nuevaVariable);
+            updateMap();
+            document.getElementById('info-label').textContent = variableLabels[nuevaVariable] || nuevaVariable;
+            document.getElementById('info-value').textContent = 'Clic en un polígono para detalles';
+        });
+
         document.getElementById('btn-polygon').addEventListener('click', function() {
+            if (heatmapActive) {
+                heatmapActive = false;
+                if (heatmapLayer) {
+                    map.removeLayer(heatmapLayer);
+                    heatmapLayer = null;
+                }
+            }
             currentMode = 'polygon';
+            document.getElementById('btn-heatmap').textContent = '🔥 Calor';
             this.classList.add('active');
             document.getElementById('btn-heatmap').classList.remove('active');
             document.getElementById('heatmap-controls').style.display = 'none';
-            if (heatmapLayer) map.removeLayer(heatmapLayer);
+            if (heatmapLayer) {
+                map.removeLayer(heatmapLayer);
+                heatmapLayer = null;
+                heatmapActive = false;
+            }
             updateMap();
         });
 
-        // Modo Calor
-        document.getElementById('btn-heatmap').addEventListener('click', function() {
-            currentMode = 'heatmap';
-            this.classList.add('active');
-            document.getElementById('btn-polygon').classList.remove('active');
-            document.getElementById('heatmap-controls').style.display = 'block';
-            updateMap();
-        });
+        document.getElementById('btn-heatmap').addEventListener('click', toggleHeatmap);
 
-        // ================================================================
-        // CONTROLES DE HEATMAP (VERSIÓN COMPLETA Y CORREGIDA)
-        // ================================================================
         const radiusSlider = document.getElementById('radius-slider');
         const blurSlider = document.getElementById('blur-slider');
         const radiusVal = document.getElementById('radius-val');
         const blurVal = document.getElementById('blur-val');
         let heatmapTimeout = null;
         
-        // Función para actualizar el heatmap
-        function actualizarHeatmap() {
-            // Verificar que el heatmap existe
-            if (!heatmapLayer || currentMode !== 'heatmap') {
-                console.warn('⚠️ Heatmap no disponible para actualizar');
-                return;
-            }
-            
-            const radius = parseInt(radiusSlider.value);
-            const blur = parseFloat(blurSlider.value) / 40;
-            
-            // Actualizar configuración global
-            heatmapConfig.radius = radius;
-            heatmapConfig.blur = blur;
-            
-            try {
-                // Método 1: Usar _heatmap (común en heatmap.js)
-                if (heatmapLayer._heatmap) {
-                    heatmapLayer._heatmap.configure({
-                        radius: radius,
-                        blur: blur
-                    });
-                    if (heatmapLayer._update) {
-                        heatmapLayer._update();
-                    }
-                }
-                // Método 2: Usar el método setData para forzar actualización
-                else {
-                    // Recrear el heatmap si no se puede actualizar
-                    console.log('🔄 Recreando heatmap...');
-                    const currentData = heatmapLayer._data;
-                    if (currentData) {
-                        map.removeLayer(heatmapLayer);
-                        heatmapLayer = new HeatmapOverlay(heatmapConfig);
-                        map.addLayer(heatmapLayer);
-                        heatmapLayer.setData(currentData);
-                    }
-                }
-                console.log(`✅ Heatmap actualizado: radius=${radius}, blur=${blur.toFixed(3)}`);
-            } catch (e) {
-                console.warn('⚠️ Error al actualizar heatmap:', e);
-                // Recrear el heatmap como fallback
-                if (currentMode === 'heatmap' && geoJsonData) {
-                    updateMap();
-                }
-            }
-        }
-        
-        // Eventos de los sliders con debounce
         radiusSlider.addEventListener('input', function(e) {
             radiusVal.innerText = e.target.value;
             clearTimeout(heatmapTimeout);
@@ -1617,22 +1559,16 @@
                 actualizarHeatmap();
             }, 100);
         });
-        
-        // Inicializar valores
-        radiusVal.innerText = radiusSlider.value;
-        blurVal.innerText = blurSlider.value;
 
         // ================================================================
-        // 14. INICIO
+        // 16. INICIO
         // ================================================================
         loadGeoJSON();
-        // Sincronizar sliders con configuración inicial
-        document.getElementById('radius-slider').value = heatmapConfig.radius;
-        document.getElementById('radius-val').innerText = heatmapConfig.radius;
-        document.getElementById('blur-slider').value = Math.round(heatmapConfig.blur * 40);
-        document.getElementById('blur-val').innerText = Math.round(heatmapConfig.blur * 40);
+        document.getElementById('radius-slider').value = 30;
+        document.getElementById('radius-val').innerText = '30';
+        document.getElementById('blur-slider').value = 15;
+        document.getElementById('blur-val').innerText = '15';
         console.log('🗺️ Mapa interactivo iniciado – RAUL VIQUEZ');
     </script>
-
 </body>
 </html>
