@@ -1485,31 +1485,39 @@
         // ================================================================
         // 13. EVENTOS
         // ================================================================
+        
+        // SELECTOR DE INDICADORES
         document.getElementById('variable-select').addEventListener('change', function(e) {
             const nuevaVariable = e.target.value;
             console.log(`🔄 Cambiando indicador a: ${nuevaVariable}`);
-            
-            // Actualizar variable global
             currentVariable = nuevaVariable;
-            
-            // Limpiar búsqueda
             document.getElementById('searchInput').value = '';
-            
-            // Reconstruir filtros para la nueva variable
             construirFiltros(nuevaVariable);
-            
-            // Actualizar el mapa
             updateMap();
-            
-            // Actualizar la etiqueta del info box
-            const label = variableLabels[nuevaVariable] || nuevaVariable;
-            document.getElementById('info-label').textContent = label;
+            document.getElementById('info-label').textContent = variableLabels[nuevaVariable] || nuevaVariable;
             document.getElementById('info-value').textContent = 'Clic en un polígono para detalles';
-            
-            console.log(`✅ Indicador cambiado a: ${label}`);
         });
-
-        // Modo Polígonos
+        
+        // SELECTOR DE MAPA BASE (¡NUEVO!)
+        document.getElementById('map-select').addEventListener('change', function(e) {
+            const value = e.target.value;
+            
+            // Eliminar todas las capas base
+            if (map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
+            if (map.hasLayer(osmLayer)) map.removeLayer(osmLayer);
+            if (map.hasLayer(topoLayer)) map.removeLayer(topoLayer);
+            
+            // Añadir la seleccionada
+            if (value === 'satellite') {
+                satelliteLayer.addTo(map);
+            } else if (value === 'osm') {
+                osmLayer.addTo(map);
+            } else if (value === 'topo') {
+                topoLayer.addTo(map);
+            }
+        });
+        
+        // MODO POLÍGONOS
         document.getElementById('btn-polygon').addEventListener('click', function() {
             currentMode = 'polygon';
             this.classList.add('active');
@@ -1518,8 +1526,8 @@
             if (heatmapLayer) map.removeLayer(heatmapLayer);
             updateMap();
         });
-
-        // Modo Calor
+        
+        // MODO CALOR
         document.getElementById('btn-heatmap').addEventListener('click', function() {
             currentMode = 'heatmap';
             this.classList.add('active');
@@ -1527,15 +1535,47 @@
             document.getElementById('heatmap-controls').style.display = 'block';
             updateMap();
         });
-
-        // ================================================================
-        // CONTROLES DE HEATMAP (VERSIÓN COMPLETA Y CORREGIDA)
-        // ================================================================
+        
+        // BUSCADOR (Enter)
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') buscarPoligonos();
+        });
+        
+        // MODAL ESTADÍSTICAS
+        document.getElementById('statsModal').addEventListener('click', function(e) {
+            if (e.target === this) closeStats();
+        });
+        
+        // CONTROLES DE HEATMAP
         const radiusSlider = document.getElementById('radius-slider');
         const blurSlider = document.getElementById('blur-slider');
         const radiusVal = document.getElementById('radius-val');
         const blurVal = document.getElementById('blur-val');
         let heatmapTimeout = null;
+        
+        radiusSlider.addEventListener('input', function(e) {
+            radiusVal.innerText = e.target.value;
+            clearTimeout(heatmapTimeout);
+            heatmapTimeout = setTimeout(() => {
+                actualizarHeatmap();
+            }, 100);
+        });
+        
+        blurSlider.addEventListener('input', function(e) {
+            blurVal.innerText = e.target.value;
+            clearTimeout(heatmapTimeout);
+            heatmapTimeout = setTimeout(() => {
+                actualizarHeatmap();
+            }, 100);
+        });
+        
+        // EXPORTAR FUNCIONES GLOBALES
+        window.toggleAllFiltros = toggleAllFiltros;
+        window.resetFiltros = resetFiltros;
+        window.buscarPoligonos = buscarPoligonos;
+        window.exportarCSV = exportarCSV;
+        window.mostrarEstadisticas = mostrarEstadisticas;
+        window.closeStats = closeStats;
         
         // Función para actualizar el heatmap
         function actualizarHeatmap() {
