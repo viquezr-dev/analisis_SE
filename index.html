@@ -506,7 +506,25 @@
         let currentFeaturesFiltradas = [];
         let currentMode = 'polygon';
         let heatmapLayer = null;
-        let heatmapActive = false;
+        let heatmapConfig = {
+            radius: 30,
+            maxOpacity: 0.85,
+            minOpacity: 0.05,
+            scaleRadius: false,
+            useLocalExtrema: false,
+            latField: 'lat',
+            lngField: 'lng',
+            valueField: 'count',
+            blur: 0.375,
+            gradient: {
+                0.00: 'rgba(0, 0, 255, 0)',
+                0.20: 'blue',
+                0.40: 'cyan',
+                0.60: 'lime',
+                0.80: 'yellow',
+                1.00: 'red'
+            }
+        };
         window.toggleHeatmap = toggleHeatmap;
         let heatmapData = null;
         
@@ -516,6 +534,7 @@
         function initHeatmap() {
             heatmapLayer = null;
             heatmapActive = false;
+            currentMode = 'polygon';
             console.log('✅ Heatmap listo');
         }
 
@@ -901,185 +920,133 @@
 
         function toggleHeatmap() {
             heatmapActive = !heatmapActive;
-        
             const btn = document.getElementById('btn-heatmap');
-        
+
             if (heatmapActive) {
                 currentMode = 'heatmap';
-        
                 btn.textContent = '🔥 Ocultar Calor';
                 btn.classList.add('active');
                 document.getElementById('btn-polygon').classList.remove('active');
                 document.getElementById('heatmap-controls').style.display = 'block';
-        
                 generarHeatmap();
-        
             } else {
                 currentMode = 'polygon';
-        
                 btn.textContent = '🔥 Calor';
                 btn.classList.remove('active');
                 document.getElementById('btn-polygon').classList.add('active');
                 document.getElementById('heatmap-controls').style.display = 'none';
-        
+
                 if (heatmapLayer) {
                     map.removeLayer(heatmapLayer);
                     heatmapLayer = null;
                 }
-        
                 updateMap();
             }
         }
 
         function generarHeatmap() {
-            if (!geoJsonData || allFeatures.length === 0) {
-                alert('No hay datos para generar el mapa de calor');
+            if (!geoJsonData || !allFeatures || allFeatures.length === 0) {
+                console.warn('⚠️ No hay datos para generar el mapa de calor');
                 return;
             }
-            
-            const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
+
+            const features = currentFeaturesFiltradas.length > 0
+                ? currentFeaturesFiltradas
+                : allFeatures;
             const variable = currentVariable;
-            
+
             if (features.length === 0) {
-                alert('No hay datos con los filtros seleccionados');
+                console.warn('⚠️ No hay datos con los filtros seleccionados');
                 return;
             }
-            
-            // Preparar puntos [lat, lon, intensidad]
+
+            const catOrder = {
+                'MUY_BAJA': 1,
+                'BAJA': 2,
+                'MEDIA_BAJA': 3,
+                'MEDIA': 4,
+                'ALTA': 5,
+                'MUY_ALTA': 6,
+                'SIN_DATOS': 0
+            };
+
             const puntos = [];
-            const valores = features
-                .map(f => parseFloat(f.properties[variable]))
-                .filter(v => !isNaN(v) && v !== null && v > 0);
-            
+
+            // Obtener valores válidos primero para determinar la escala del heatmap.
+            const valores = features.map(f => {
+                if (variable === 'CAT_DENS') {
+                    return catOrder[f.properties[variable]] || 0;
+                }
+                return parseFloat(f.properties[variable]);
+            }).filter(v => Number.isFinite(v) && v > 0);
+
             if (valores.length === 0) {
-                alert('No hay valores positivos para el indicador seleccionado');
+                console.warn('⚠️ No hay valores positivos para el indicador seleccionado');
                 return;
             }
-            
+
             const maxValor = Math.max(...valores);
             const minValor = Math.min(...valores);
-            const rango = maxValor - minValor || 1;
-            
-            // Eliminar heatmap anterior
+
+            // Crear puntos usando Turf para obtener centroides correctos.
+            for (const f of features) {
+                let valor;
+
+                if (variable === 'CAT_DENS') {
+                    valor = catOrder[f.properties[variable]] || 0;
+                } else {
+                    valor = parseFloat(f.properties[variable]);
+                }
+
+                if (!Number.isFinite(valor) || valor <= 0) continue;
+
+                try {
+                    const centroid = turf.centroid(f);
+                    const coords = centroid.geometry.coordinates;
+                    if (!coords || coords.length < 2) continue;
+
+                    puntos.push({
+                        lat: coords[1],
+                        lng: coords[0],
+                        count: valor
+                    });
+                } catch (e) {
+                    console.warn('⚠️ No se pudo calcular centroide:', e);
+                }
+            }
+
+            if (puntos.length === 0) {
+                console.warn('⚠️ No se pudieron generar puntos para el heatmap');
+                return;
+            }
+
+            // Eliminar capa anterior antes de crear la nueva.
             if (heatmapLayer) {
                 map.removeLayer(heatmapLayer);
                 heatmapLayer = null;
             }
-            
-            // Crear capa de calor con círculos (estilo probado)
-            heatmapLayer = L.layerGroup();
-            let puntosGenerados = 0;
-            
-            // Colores: azul → verde → amarillo → rojo
-            const colores = [
-                { r: 0, g: 0, b: 255, a: 0.2 },
-                { r: 0, g: 128, b: 255, a: 0.4 },
-                { r: 0, g: 255, b: 255, a: 0.5 },
-                { r: 0, g: 255, b: 128, a: 0.6 },
-                { r: 255, g: 255, b: 0, a: 0.7 },
-                { r: 255, g: 128, b: 0, a: 0.8 },
-                { r: 255, g: 0, b: 0, a: 0.9 }
-            ];
-            
-            for (const f of features) {
-                const geom = f.geometry;
-                if (!geom) continue;
-                
-                // Calcular centroide
-                let lat, lng;
-                try {
-                    if (geom.type === 'Polygon') {
-                        const coords = geom.coordinates[0];
-                        let latSum = 0, lngSum = 0, count = 0;
-                        for (const c of coords) {
-                            if (Array.isArray(c) && c.length === 2) {
-                                lngSum += c[0];
-                                latSum += c[1];
-                                count++;
-                            }
-                        }
-                        if (count > 0) {
-                            lat = latSum / count;
-                            lng = lngSum / count;
-                        }
-                    } else if (geom.type === 'MultiPolygon') {
-                        const coords = geom.coordinates[0][0];
-                        let latSum = 0, lngSum = 0, count = 0;
-                        for (const c of coords) {
-                            if (Array.isArray(c) && c.length === 2) {
-                                lngSum += c[0];
-                                latSum += c[1];
-                                count++;
-                            }
-                        }
-                        if (count > 0) {
-                            lat = latSum / count;
-                            lng = lngSum / count;
-                        }
-                    } else {
-                        continue;
-                    }
-                } catch (e) {
-                    continue;
-                }
-                
-                if (isNaN(lat) || isNaN(lng)) continue;
-                
-                // Obtener valor
-                let valor = parseFloat(f.properties[variable]);
-                if (variable === 'CAT_DENS') {
-                    const catOrder = { 'MUY_BAJA': 1, 'BAJA': 2, 'MEDIA': 3, 'ALTA': 4, 'MUY_ALTA': 5 };
-                    valor = catOrder[f.properties[variable]] || 0;
-                }
-                
-                if (isNaN(valor) || valor === 0) continue;
-                
-                const intensidad = (valor - minValor) / rango;
-                const radio = 300 + intensidad * 1200; // Radio entre 300 y 1500 metros
-                const idx = Math.min(Math.floor(intensidad * (colores.length - 1)), colores.length - 1);
-                const color = colores[idx];
-                const colorStr = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
-                
-                const circle = L.circle([lat, lng], {
-                    radius: radio,
-                    color: colorStr,
-                    fillColor: colorStr,
-                    fillOpacity: 0.6,
-                    weight: 0,
-                    interactive: true
-                });
-                
-                // Popup con información
-                const manzaCode = f.properties.MANZA_CODE || '';
-                const barrio = f.properties.BARR_NOMB || '';
-                const lugar = f.properties.LUPO_NOMB || '';
-                let ubicacion = barrio || lugar || manzaCode;
-                
-                circle.bindPopup(`
-                    <div style="font-family:'Segoe UI',sans-serif;font-size:11px;line-height:1.6;">
-                        <strong>${ubicacion}</strong><br>
-                        <strong>${variableLabels[variable] || variable}:</strong> ${valor.toFixed(2)}<br>
-                        <strong>Intensidad:</strong> ${(intensidad * 100).toFixed(1)}%
-                    </div>
-                `);
-                
-                heatmapLayer.addLayer(circle);
-                puntosGenerados++;
-            }
-            
-            if (puntosGenerados === 0) {
-                alert('No se pudieron generar puntos para el heatmap');
-                heatmapActive = false;
-                document.getElementById('btn-heatmap').textContent = '🔥 Calor';
-                document.getElementById('btn-heatmap').classList.remove('active');
-                document.getElementById('btn-polygon').classList.add('active');
-                document.getElementById('heatmap-controls').style.display = 'none';
-                return;
-            }
-            
-            heatmapLayer.addTo(map);
-            
-            // Actualizar leyenda
+
+            // Leer los controles actuales.
+            const radius = parseInt(document.getElementById('radius-slider').value, 10) || 30;
+            const blurValue = parseInt(document.getElementById('blur-slider').value, 10) || 15;
+            const blur = Math.max(0.05, Math.min(1, blurValue / 40));
+
+            heatmapConfig.radius = radius;
+            heatmapConfig.blur = blur;
+            heatmapConfig.maxOpacity = 0.85;
+            heatmapConfig.minOpacity = 0.05;
+            heatmapConfig.scaleRadius = false;
+            heatmapConfig.useLocalExtrema = false;
+
+            heatmapLayer = new HeatmapOverlay(heatmapConfig);
+            map.addLayer(heatmapLayer);
+            heatmapLayer.setData({
+                max: maxValor,
+                min: minValor,
+                data: puntos
+            });
+
+            // Leyenda del heatmap.
             document.getElementById('legend').innerHTML = `
                 <div class="legend-title">🔥 Mapa de Calor</div>
                 <div class="gradient-bar"></div>
@@ -1087,21 +1054,15 @@
                     <span>Bajo (${minValor.toFixed(1)})</span>
                     <span>Alto (${maxValor.toFixed(1)})</span>
                 </div>
-                <div class="legend-desc">💡 ${puntosGenerados} puntos · ${variableLabels[variable] || variable}</div>
+                <div class="legend-desc">💡 ${puntos.length} puntos · ${variableLabels[variable] || variable}</div>
             `;
-            
-            // Ajustar zoom
-            try {
-                const bounds = L.latLngBounds(
-                    heatmapLayer.getLayers().map(l => l.getLatLng())
-                );
-                if (bounds.isValid() && !bounds.isZero()) {
-                    map.fitBounds(bounds, { padding: [50, 50] });
-                }
-            } catch (e) {
-                console.warn('⚠️ No se pudo ajustar el zoom:', e);
-            }
+
+            document.getElementById('info-label').textContent = variableLabels[variable] || variable;
+            document.getElementById('info-value').textContent = `${puntos.length} puntos en calor`;
+
+            console.log(`🔥 Heatmap generado: ${puntos.length} puntos | radio=${radius}px | blur=${blur.toFixed(3)}`);
         }
+
         // ================================================================
         // 7. BUSCADOR
         // ================================================================
@@ -1319,36 +1280,18 @@
             if (currentLayer) map.removeLayer(currentLayer);
 
             if (currentMode === 'heatmap') {
-                const heatData = { max: 100, data: [] };
-                let maxVal = -Infinity;
+                // El heatmap se genera con Heatmap.js/Leaflet-Heatmap.
+                // La capa de polígonos se mantiene transparente para conservar los límites y popups.
+                generarHeatmap();
 
-                featuresFiltradas.forEach(f => {
-                    let val = parseFloat(f.properties[variable]);
-                    if (variable === 'CAT_DENS') {
-                        const catOrder = { 'MUY_BAJA': 1, 'BAJA': 2, 'MEDIA_BAJA': 3, 'MEDIA': 4, 'ALTA': 5, 'MUY_ALTA': 6 };
-                        val = catOrder[f.properties[variable]] || 0;
-                    }
-                    if (isNaN(val) || val === null) return;
-
-                    try {
-                        const centroid = turf.centroid(f);
-                        const coords = centroid.geometry.coordinates;
-                        if (val > maxVal) maxVal = val;
-                        heatData.data.push({ lat: coords[1], lng: coords[0], count: val });
-                    } catch (e) {}
-                });
-
-                heatData.max = maxVal === -Infinity ? 100 : maxVal;
-                map.removeLayer(heatmapLayer);
-                heatmapLayer = new HeatmapOverlay(heatmapConfig);
-                map.addLayer(heatmapLayer);
-                heatmapLayer.setData(heatData);
-
-                currentLayer = L.geoJSON(geoJsonData, {
+                currentLayer = L.geoJSON({
+                    type: 'FeatureCollection',
+                    features: featuresFiltradas
+                }, {
                     style: {
                         fillColor: 'transparent',
                         fillOpacity: 0.01,
-                        color: 'rgba(255,255,255,0.3)',
+                        color: 'rgba(255,255,255,0.35)',
                         weight: 1
                     },
                     onEachFeature: function(feature, layer) {
@@ -1356,19 +1299,8 @@
                     }
                 }).addTo(map);
 
-                document.getElementById('legend').innerHTML = `
-                    <div class="legend-title">🔥 Mapa de Calor</div>
-                    <div class="gradient-bar"></div>
-                    <div class="gradient-labels">
-                        <span>Bajo (${heatData.data.length > 0 ? Math.min(...heatData.data.map(d => d.count)).toFixed(1) : 0})</span>
-                        <span>Alto (${heatData.max.toFixed(1)})</span>
-                    </div>
-                    <div class="legend-desc">💡 Intensidad: ${variableLabels[variable] || variable}</div>
-                `;
-
-                updateLegend(variable, featuresFiltradas);
                 document.getElementById('info-label').textContent = variableLabels[variable] || variable;
-                document.getElementById('info-value').textContent = `${featuresFiltradas.length} puntos en calor`;
+                document.getElementById('info-value').textContent = `${featuresFiltradas.length} polígonos analizados`;
                 return;
             }
 
@@ -1511,44 +1443,14 @@
         // 13. ACTUALIZAR HEATMAP CON NUEVA CONFIGURACIÓN
         // ================================================================
         function actualizarHeatmap() {
-            if (!heatmapLayer || currentMode !== 'heatmap') {
-                console.warn('⚠️ Heatmap no disponible para actualizar');
+            if (!heatmapActive || currentMode !== 'heatmap') {
+                console.warn('⚠️ Heatmap no activo para actualizar');
                 return;
             }
-            
-            const radius = parseInt(document.getElementById('radius-slider').value);
-            const blur = parseFloat(document.getElementById('blur-slider').value) / 40;
-            
-            heatmapConfig.radius = radius;
-            heatmapConfig.blur = blur;
-            heatmapConfig.scaleRadius = false;  // ✅ MANTENER false
-            
-            try {
-                if (heatmapLayer._heatmap) {
-                    heatmapLayer._heatmap.configure({
-                        radius: radius,
-                        blur: blur,
-                        scaleRadius: false
-                    });
-                    if (heatmapLayer._update) {
-                        heatmapLayer._update();
-                    }
-                } else {
-                    const currentData = heatmapLayer._data;
-                    if (currentData) {
-                        map.removeLayer(heatmapLayer);
-                        heatmapLayer = new HeatmapOverlay(heatmapConfig);
-                        map.addLayer(heatmapLayer);
-                        heatmapLayer.setData(currentData);
-                    }
-                }
-                console.log(`✅ Heatmap actualizado: radius=${radius}, blur=${blur.toFixed(3)}`);
-            } catch (e) {
-                console.warn('⚠️ Error al actualizar heatmap:', e);
-                if (currentMode === 'heatmap' && geoJsonData) {
-                    updateMap();
-                }
-            }
+
+            // Regenerar la capa con los nuevos parámetros.
+            // Esto evita depender de APIs internas (_heatmap/_update) de Heatmap.js.
+            generarHeatmap();
         }
 
         // ================================================================
@@ -1615,8 +1517,14 @@
 
         document.getElementById('btn-polygon').addEventListener('click', function() {
             if (heatmapActive) {
-                toggleHeatmap(); // Desactiva el heatmap
+                heatmapActive = false;
+                if (heatmapLayer) {
+                    map.removeLayer(heatmapLayer);
+                    heatmapLayer = null;
+                }
             }
+            currentMode = 'polygon';
+            document.getElementById('btn-heatmap').textContent = '🔥 Calor';
             this.classList.add('active');
             document.getElementById('btn-heatmap').classList.remove('active');
             document.getElementById('heatmap-controls').style.display = 'none';
@@ -1629,7 +1537,6 @@
         });
 
         document.getElementById('btn-heatmap').addEventListener('click', toggleHeatmap);
-        
 
         const radiusSlider = document.getElementById('radius-slider');
         const blurSlider = document.getElementById('blur-slider');
