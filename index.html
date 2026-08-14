@@ -1196,32 +1196,68 @@
         }
 
         function actualizarHeatmap() {
-            if (!heatmapLayer || currentMode !== 'heatmap') return;
+            if (!geoJsonData || currentMode !== 'heatmap') return;
             
             const radius = parseInt(document.getElementById('radius-slider').value);
             const blur = parseFloat(document.getElementById('blur-slider').value);
             const opacity = parseFloat(document.getElementById('opacity-slider').value);
             
+            // Actualizar configuración
             heatmapConfig.radius = radius;
             heatmapConfig.blur = blur;
             heatmapConfig.maxOpacity = opacity;
             
-            try {
-                if (heatmapLayer._heatmap) {
-                    heatmapLayer._heatmap.configure({ radius: radius, blur: blur, maxOpacity: opacity });
-                    if (heatmapLayer._update) heatmapLayer._update();
-                } else {
-                    const currentData = heatmapLayer._data;
-                    if (currentData) {
-                        map.removeLayer(heatmapLayer);
-                        heatmapLayer = new HeatmapOverlay(heatmapConfig);
-                        map.addLayer(heatmapLayer);
-                        heatmapLayer.setData(currentData);
-                    }
+            // Reconstruir el heatmap desde cero
+            const variable = currentVariable;
+            const featuresFiltradas = aplicarFiltros(allFeatures, variable);
+            
+            const heatData = { max: 100, data: [] };
+            let maxVal = 1;
+            
+            featuresFiltradas.forEach(f => {
+                let val = parseFloat(f.properties[variable]);
+                if (variable === 'CAT_DENS') {
+                    const catOrder = { 'MUY_BAJA': 1, 'BAJA': 2, 'MEDIA_BAJA': 3, 'MEDIA': 4, 'ALTA': 5, 'MUY_ALTA': 6 };
+                    val = catOrder[f.properties[variable]] || 0;
                 }
-            } catch (e) {
-                if (currentMode === 'heatmap' && geoJsonData) updateMap();
+                if (isNaN(val) || val === null || val === 0) return;
+                
+                try {
+                    const centroid = turf.centroid(f);
+                    const coords = centroid.geometry.coordinates;
+                    if (val > maxVal) maxVal = val;
+                    heatData.data.push({ lat: coords[1], lng: coords[0], count: val });
+                } catch (e) {}
+            });
+            
+            const sortedValues = heatData.data.map(d => d.count).sort((a, b) => a - b);
+            if (sortedValues.length > 10) {
+                const p95Index = Math.floor(sortedValues.length * 0.95);
+                maxVal = sortedValues[p95Index] || maxVal;
             }
+            if (maxVal === 1) maxVal = 2;
+            heatData.max = maxVal;
+            
+            // Remover capa vieja y crear nueva
+            if (heatmapLayer) map.removeLayer(heatmapLayer);
+            
+            heatmapLayer = new HeatmapOverlay(heatmapConfig);
+            map.addLayer(heatmapLayer);
+            heatmapLayer.setData(heatData);
+            
+            // Actualizar leyenda
+            document.getElementById('legend').innerHTML = `
+                <div class="legend-title">🔥 Mapa de Calor</div>
+                <div class="gradient-bar"></div>
+                <div class="gradient-labels">
+                    <span>Bajo (${heatData.data.length > 0 ? Math.min(...heatData.data.map(d => d.count)).toFixed(1) : 0})</span>
+                    <span>Alto (${heatData.max.toFixed(1)})</span>
+                </div>
+                <div class="legend-desc">💡 Intensidad: ${variableLabels[variable] || variable}</div>
+                <div class="legend-desc" style="margin-top:2px;border-top-color:#ccc;">
+                    🎛️ Radio: ${radius}px | Blur: ${blur.toFixed(2)} | Opacidad: ${(opacity * 100).toFixed(0)}%
+                </div>
+            `;
         }
 
         // ================================================================
