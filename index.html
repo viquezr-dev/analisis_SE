@@ -440,9 +440,13 @@
         <!-- Controles de calor (radio y blur) -->
         <div id="heatmap-controls" style="display:none; margin-top:5px; padding-top:5px; border-top:1px dashed #ccc;">
             <label for="radius-slider">Radio (<span id="radius-val">20</span>px):</label>
-            <input type="range" id="radius-slider" min="10" max="80" value="20" style="width:100%;">
+            <input type="range" id="radius-slider" min="5" max="50" value="20" style="width:100%;">
             <label for="blur-slider">Difuminado (<span id="blur-val">15</span>px):</label>
             <input type="range" id="blur-slider" min="5" max="40" value="15" style="width:100%;">
+            
+            <!-- Nuevo control de opacidad máxima -->
+            <label for="opacity-slider">Opacidad máxima (<span id="opacity-val">0.6</span>):</label>
+            <input type="range" id="opacity-slider" min="0.1" max="1.0" step="0.05" value="0.6" style="width:100%;">
         </div>
 
         <div id="filtros-container" class="filtros-container">
@@ -508,16 +512,14 @@
         // 3. INICIALIZAR HEATMAP (SEGUNDO PLANO)
         // ================================================================
         function initHeatmap() {
-            // Verificar si HeatmapOverlay está disponible
             if (typeof HeatmapOverlay === 'undefined') {
-                console.warn('⚠️ HeatmapOverlay no está disponible. El mapa de calor no funcionará.');
-                console.log('💡 Asegúrate de que leaflet-heatmap.js esté cargado correctamente.');
+                console.warn('⚠️ HeatmapOverlay no está disponible.');
                 return;
             }
             
             heatmapConfig = {
-                radius: 10,
-                maxOpacity: 0.8,
+                radius: 20,
+                maxOpacity: 0.6,  // Reducido de 0.8 a 0.6
                 minOpacity: 0.05,
                 blur: 0.375,
                 scaleRadius: false,
@@ -528,10 +530,9 @@
             };
             
             heatmapLayer = new HeatmapOverlay(heatmapConfig);
-            console.log('✅ Heatmap inicializado correctamente');
+            console.log('✅ Heatmap inicializado');
         }
         
-        // Llamar a initHeatmap después de cargar la página
         document.addEventListener('DOMContentLoaded', function() {
             initHeatmap();
         });
@@ -850,7 +851,7 @@
             if (!texto || !geoJsonData) return;
 
             const encontrados = allFeatures.filter(f => {
-                const prov = (f.properties.PROV_NOMB || '').toLowerCase(); // CAMBIO: PROVINCIA a PROV_NOMB
+                const prov = (f.properties.PROV_NOMB || '').toLowerCase();
                 const dist = (f.properties.DISTRITO || '').toLowerCase();
                 return prov.includes(texto) || dist.includes(texto);
             });
@@ -899,7 +900,6 @@
         function crearPopup(p) {
             const areaM2 = p.AREA || 0;
             const areaKm2 = areaM2 / 1000000;
-            // CAMBIO: PROVINCIA a PROV_NOMB
             return `<div style="font-family:'Segoe UI',sans-serif;min-width:170px;max-width:240px;font-size:11px;">
                 <h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:12px;">${p.PROV_NOMB || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
                 ${p.BARR_NOMB ? `<div style="font-size:10px;color:#666;margin-bottom:2px;">📍 ${p.BARR_NOMB}</div>` : ''}
@@ -927,7 +927,6 @@
             }
 
             const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
-            // CAMBIO: PROVINCIA a PROV_NOMB
             const headers = ['PROV_NOMB', 'DISTRITO', 'BARR_NOMB', 'VIVIENDA', 'V_PERSONAS',
                 'VIV_OCUP', 'PORC_OCU', 'DENS_POB', 'PERS_VIV', 'CAT_DENS', 'AREA_KM2'
             ];
@@ -1056,7 +1055,7 @@
 
             if (currentMode === 'heatmap') {
                 const heatData = { max: 100, data: [] };
-                let maxVal = -Infinity;
+                let maxVal = 1; // Valor mínimo para evitar división por cero
 
                 featuresFiltradas.forEach(f => {
                     let val = parseFloat(f.properties[variable]);
@@ -1064,18 +1063,38 @@
                         const catOrder = { 'MUY_BAJA': 1, 'BAJA': 2, 'MEDIA_BAJA': 3, 'MEDIA': 4, 'ALTA': 5, 'MUY_ALTA': 6 };
                         val = catOrder[f.properties[variable]] || 0;
                     }
-                    if (isNaN(val) || val === null) return;
+                    if (isNaN(val) || val === null || val === 0) return;
 
                     try {
                         const centroid = turf.centroid(f);
                         const coords = centroid.geometry.coordinates;
                         if (val > maxVal) maxVal = val;
+                        // Normalizar el valor para que esté entre 0 y 1
+                        // Esto ayuda a que el heatmap no se sature
                         heatData.data.push({ lat: coords[1], lng: coords[0], count: val });
                     } catch (e) {}
                 });
 
-                heatData.max = maxVal === -Infinity ? 100 : maxVal;
+                // Configurar el máximo con un valor razonable
+                // Si todos los valores son iguales, usar un max artificial más alto
+                if (maxVal === 1) maxVal = 2;
+                
+                // Usar el valor máximo real o un percentil para evitar saturación
+                const sortedValues = heatData.data.map(d => d.count).sort((a, b) => a - b);
+                if (sortedValues.length > 10) {
+                    // Usar el percentil 95 para evitar que outliers extremos saturen el mapa
+                    const p95Index = Math.floor(sortedValues.length * 0.95);
+                    maxVal = sortedValues[p95Index] || maxVal;
+                }
+                
+                heatData.max = maxVal;
+
                 if (heatmapLayer) map.removeLayer(heatmapLayer);
+                
+                // Obtener opacidad del slider
+                const opacity = parseFloat(document.getElementById('opacity-slider').value);
+                heatmapConfig.maxOpacity = opacity;
+                
                 heatmapLayer = new HeatmapOverlay(heatmapConfig);
                 map.addLayer(heatmapLayer);
                 heatmapLayer.setData(heatData);
@@ -1093,6 +1112,7 @@
                         <span>Alto (${heatData.max.toFixed(1)})</span>
                     </div>
                     <div class="legend-desc">💡 Intensidad: ${variableLabels[variable] || variable}</div>
+                    <div class="legend-desc" style="margin-top:2px;border-top-color:#ccc;">🎛️ Opacidad: ${(opacity * 100).toFixed(0)}%</div>
                 `;
 
                 updateLegend(variable, featuresFiltradas);
@@ -1179,13 +1199,15 @@
             
             const radius = parseInt(document.getElementById('radius-slider').value);
             const blur = parseFloat(document.getElementById('blur-slider').value) / 40;
+            const opacity = parseFloat(document.getElementById('opacity-slider').value);
             
             heatmapConfig.radius = radius;
             heatmapConfig.blur = blur;
+            heatmapConfig.maxOpacity = opacity;
             
             try {
                 if (heatmapLayer._heatmap) {
-                    heatmapLayer._heatmap.configure({ radius: radius, blur: blur });
+                    heatmapLayer._heatmap.configure({ radius: radius, blur: blur, maxOpacity: opacity });
                     if (heatmapLayer._update) heatmapLayer._update();
                 } else {
                     const currentData = heatmapLayer._data;
@@ -1225,11 +1247,13 @@
                 let label = variableLabels[variable] || variable;
                 if (variable === 'CAT_DENS') label = 'Categoría de densidad (1-6)';
                 
+                const opacity = parseFloat(document.getElementById('opacity-slider').value);
+                
                 html += `
                     <div style="margin-bottom:6px; font-size:10px; color:#2c3e50;"><strong>${label}</strong></div>
                     <div class="gradient-bar"></div>
                     <div class="gradient-labels"><span>Bajo (${minVal.toFixed(1)})</span><span>Alto (${maxVal.toFixed(1)})</span></div>
-                    <div class="legend-desc">💡 Intensidad del calor</div>
+                    <div class="legend-desc">💡 Intensidad del calor (opacidad: ${(opacity * 100).toFixed(0)}%)</div>
                 `;
                 legendDiv.innerHTML = html;
                 return;
@@ -1377,6 +1401,7 @@
         
         const radiusSlider = document.getElementById('radius-slider');
         const blurSlider = document.getElementById('blur-slider');
+        const opacitySlider = document.getElementById('opacity-slider');
         let heatmapTimeout = null;
         
         radiusSlider.addEventListener('input', function(e) {
@@ -1387,6 +1412,12 @@
         
         blurSlider.addEventListener('input', function(e) {
             document.getElementById('blur-val').innerText = e.target.value;
+            clearTimeout(heatmapTimeout);
+            heatmapTimeout = setTimeout(actualizarHeatmap, 100);
+        });
+        
+        opacitySlider.addEventListener('input', function(e) {
+            document.getElementById('opacity-val').innerText = parseFloat(e.target.value).toFixed(2);
             clearTimeout(heatmapTimeout);
             heatmapTimeout = setTimeout(actualizarHeatmap, 100);
         });
