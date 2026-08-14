@@ -441,8 +441,8 @@
         <div id="heatmap-controls" style="display:none; margin-top:5px; padding-top:5px; border-top:1px dashed #ccc;">
             <label for="radius-slider">Radio (<span id="radius-val">20</span>px):</label>
             <input type="range" id="radius-slider" min="1" max="20" value="8" style="width:100%;">
-            <label for="blur-slider">Difuminado (<span id="blur-val">15</span>px):</label>
-            <input type="range" id="blur-slider" min="5" max="40" value="15" style="width:100%;">
+            <label for="blur-slider">Difuminado (<span id="blur-val">0.3</span>px):</label>
+            <input type="range" id="blur-slider" min="0" max="0.05" value="0.3" style="width:100%;">
             
             <!-- Nuevo control de opacidad máxima -->
             <label for="opacity-slider">Opacidad máxima (<span id="opacity-val">0.6</span>):</label>
@@ -521,7 +521,7 @@
                 radius: 8,
                 maxOpacity: 0.6,  // Reducido de 0.8 a 0.6
                 minOpacity: 0.05,
-                blur: 0.375,
+                blur: 0.3,
                 scaleRadius: false,
                 useLocalExtrema: false,
                 latField: 'lat',
@@ -1198,7 +1198,7 @@
             if (!heatmapLayer || currentMode !== 'heatmap') return;
             
             const radius = parseInt(document.getElementById('radius-slider').value);
-            const blur = parseFloat(document.getElementById('blur-slider').value) / 40;
+            const blur = parseFloat(document.getElementById('blur-slider').value);
             const opacity = parseFloat(document.getElementById('opacity-slider').value);
             
             heatmapConfig.radius = radius;
