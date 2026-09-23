@@ -426,7 +426,7 @@
 
         <!-- Buscador -->
         <div class="search-container">
-            <input type="text" id="searchInput" placeholder="🔍 Buscar provincia/distrito..." />
+            <input type="text" id="searchInput" placeholder="🔍 Buscar provincia, distrito, corregimiento, poblado o barrio..." />
             <button onclick="buscarPoligonos()">Buscar</button>
         </div>
 
@@ -439,10 +439,10 @@
 
         <!-- Controles de calor (radio y blur) -->
         <div id="heatmap-controls" style="display:none; margin-top:5px; padding-top:5px; border-top:1px dashed #ccc;">
-            <label for="radius-slider">Radio (<span id="radius-val">20</span>px):</label>
+            <label for="radius-slider">Radio (<span id="radius-val">8</span>px):</label>
             <input type="range" id="radius-slider" min="1" max="20" value="8" style="width:100%;">
             
-            <label for="blur-slider">Difuminado (<span id="blur-val">0.35</span>px):</label>
+            <label for="blur-slider">Difuminado (<span id="blur-val">0.35</span>):</label>
             <input type="range" id="blur-slider" min="0" max="1" step="0.05" value="0.35" style="width:100%;">
             
             <!-- Nuevo control de opacidad máxima -->
@@ -522,7 +522,7 @@
                 radius: 8,
                 maxOpacity: 0.6,  // Reducido de 0.8 a 0.6
                 minOpacity: 0.05,
-                blur: 0.3,
+                blur: 0.35,
                 scaleRadius: false,
                 useLocalExtrema: false,
                 latField: 'lat',
@@ -578,9 +578,8 @@
         };
 
         function getColorByValue(variable, value, min, max) {
-            if (isNaN(value) || value === null || value === 0) return '#cccccc';
-            
             if (variable === 'CAT_DENS') return catColors[value] || '#cccccc';
+            if (!Number.isFinite(value) || value < 0) return '#cccccc';
             
             if (variable === 'DENS_POB') {
                 const coloresDensidad = ['#fcbba1', '#fc9272', '#fb6a4a', '#de2d26', '#a50f15', '#67000d'];
@@ -765,7 +764,7 @@
                     return activos[key] !== false;
                 } else {
                     const val = parseFloat(f.properties[variable]);
-                    if (isNaN(val) || val === null) return false;
+                    if (!Number.isFinite(val)) return false;
                     const index = getRangoIndex(variable, val);
                     key = `rango_${index}`;
                     return activos[key] !== false;
@@ -811,7 +810,7 @@
                 
                 for (const f of allFeatures) {
                     const val = parseFloat(f.properties[variable]);
-                    if (isNaN(val) || val === null || val === 0) continue;
+                    if (!Number.isFinite(val)) continue;
                     const index = getRangoIndex(variable, val);
                     if (index === i) count++;
                 }
@@ -849,12 +848,12 @@
         // ================================================================
         function buscarPoligonos() {
             const texto = document.getElementById('searchInput').value.toLowerCase().trim();
-            if (!texto || !geoJsonData) return;
+            if (!geoJsonData) return;
+            if (!texto) { updateMap(); return; }
 
             const encontrados = allFeatures.filter(f => {
-                const prov = (f.properties.PROV_NOMB || '').toLowerCase();
-                const dist = (f.properties.DISTRITO || '').toLowerCase();
-                return prov.includes(texto) || dist.includes(texto);
+                return ['PROV_NOMB', 'DIST_NOMB', 'CORR_NOMB', 'LUPO_NOMB', 'BARR_NOMB']
+                    .some(campo => String(f.properties[campo] || '').toLowerCase().includes(texto));
             });
 
             if (encontrados.length === 0) {
@@ -890,6 +889,7 @@
 
             const bounds = L.geoJSON(geoJsonEncontrados).getBounds();
             if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+            currentFeaturesFiltradas = encontrados;
             document.getElementById('count-mostrados').textContent = encontrados.length;
             document.getElementById('count-total').textContent = allFeatures.length;
             document.getElementById('info-value').textContent = `🔍 Resultados: ${encontrados.length} polígonos`;
@@ -898,21 +898,37 @@
         // ================================================================
         // 8. POPUP
         // ================================================================
+        function escaparHTML(valor) {
+            return String(valor ?? '').replace(/[&<>"']/g, caracter => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[caracter]);
+        }
+
+        function numeroSeguro(valor, decimales = 0) {
+            const numero = Number(valor);
+            return Number.isFinite(numero) ? numero.toFixed(decimales) : (0).toFixed(decimales);
+        }
+
         function crearPopup(p) {
-            const areaM2 = p.AREA || 0;
+            const areaM2 = Number(p.AREA) || 0;
             const areaKm2 = areaM2 / 1000000;
+            const provincia = escaparHTML(p.PROV_NOMB || 'N/D');
+            const distrito = escaparHTML(p.DIST_NOMB || 'N/D');
+            const corregimiento = escaparHTML(p.CORR_NOMB || 'N/D');
+            const poblado = escaparHTML(p.LUPO_NOMB || 'N/D');
+            const barrio = escaparHTML(p.BARR_NOMB || 'N/D');
             return `<div style="font-family:'Segoe UI',sans-serif;min-width:170px;max-width:240px;font-size:11px;">
-                <h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:12px;">${p.PROV_NOMB || 'N/D'} – ${p.DISTRITO || 'N/D'}</h4>
-                ${p.BARR_NOMB ? `<div style="font-size:10px;color:#666;margin-bottom:2px;">📍 ${p.BARR_NOMB}</div>` : ''}
+                <h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:12px;">${provincia} – ${distrito} – ${corregimiento}</h4>
+                <div style="font-size:10px;color:#666;margin-bottom:2px;">📍 Poblado: ${poblado}<br>Barrio: ${barrio}</div>
                 <hr style="margin:3px 0;border:0;border-top:1px solid #ddd;">
                 <table style="width:100%;font-size:10px;line-height:1.4;">
-                    <tr><td><strong>Viviendas:</strong></td><td>${p.VIVIENDA || 0}</td></tr>
-                    <tr><td><strong>Personas:</strong></td><td>${p.V_PERSONAS || 0}</td></tr>
-                    <tr><td><strong>Ocupadas:</strong></td><td>${p.VIV_OCUP || 0}</td></tr>
-                    <tr><td><strong>% Ocupación:</strong></td><td>${p.PORC_OCU ? p.PORC_OCU.toFixed(1) : 0}%</td></tr>
-                    <tr><td><strong>Densidad:</strong></td><td>${p.DENS_POB ? p.DENS_POB.toFixed(1) : 0} hab/km²</td></tr>
-                    <tr><td><strong>Pers./viv. ocupada:</strong></td><td>${p.PERS_VIV ? p.PERS_VIV.toFixed(2) : 0}</td></tr>
-                    <tr><td><strong>Categoría:</strong></td><td>${p.CAT_DENS || 'Sin datos'}</td></tr>
+                    <tr><td><strong>Viviendas:</strong></td><td>${numeroSeguro(p.VIVIENDA)}</td></tr>
+                    <tr><td><strong>Personas:</strong></td><td>${numeroSeguro(p.V_PERSONAS)}</td></tr>
+                    <tr><td><strong>Ocupadas:</strong></td><td>${numeroSeguro(p.VIV_OCUP)}</td></tr>
+                    <tr><td><strong>% Ocupación:</strong></td><td>${numeroSeguro(p.PORC_OCU, 1)}%</td></tr>
+                    <tr><td><strong>Densidad:</strong></td><td>${numeroSeguro(p.DENS_POB, 1)} hab/km²</td></tr>
+                    <tr><td><strong>Pers./viv. ocupada:</strong></td><td>${numeroSeguro(p.PERS_VIV, 2)}</td></tr>
+                    <tr><td><strong>Categoría:</strong></td><td>${escaparHTML(p.CAT_DENS || 'Sin datos')}</td></tr>
                     <tr><td><strong>Área:</strong></td><td>${areaKm2.toFixed(2)} km² (${areaM2.toFixed(0)} m²)</td></tr>
                 </table>
             </div>`;
@@ -927,26 +943,26 @@
                 return;
             }
 
-            const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
-            const headers = ['PROV_NOMB', 'DISTRITO', 'BARR_NOMB', 'VIVIENDA', 'V_PERSONAS',
+            const features = currentFeaturesFiltradas;
+            const headers = ['PROV_NOMB', 'DIST_NOMB', 'CORR_NOMB', 'LUPO_NOMB', 'BARR_NOMB', 'VIVIENDA', 'V_PERSONAS',
                 'VIV_OCUP', 'PORC_OCU', 'DENS_POB', 'PERS_VIV', 'CAT_DENS', 'AREA_KM2'
             ];
 
             const rows = features.map(f => {
                 const p = f.properties;
                 return [
-                    p.PROV_NOMB || '', p.DISTRITO || '', p.BARR_NOMB || '',
+                    p.PROV_NOMB || '', p.DIST_NOMB || '', p.CORR_NOMB || '', p.LUPO_NOMB || '', p.BARR_NOMB || '',
                     p.VIVIENDA || 0, p.V_PERSONAS || 0, p.VIV_OCUP || 0,
-                    p.PORC_OCU ? p.PORC_OCU.toFixed(1) : 0,
-                    p.DENS_POB ? p.DENS_POB.toFixed(1) : 0,
-                    p.PERS_VIV ? p.PERS_VIV.toFixed(2) : 0,
+                    numeroSeguro(p.PORC_OCU, 1),
+                    numeroSeguro(p.DENS_POB, 1),
+                    numeroSeguro(p.PERS_VIV, 2),
                     p.CAT_DENS || '',
                     ((p.AREA || 0) / 1000000).toFixed(4)
                 ];
             });
 
             let csv = headers.join(',') + '\n';
-            rows.forEach(row => { csv += row.join(',') + '\n'; });
+            rows.forEach(row => { csv += row.map(valor => `"${String(valor).replace(/"/g, '""')}"`).join(',') + '\n'; });
 
             const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
@@ -961,7 +977,7 @@
         // ================================================================
         function mostrarEstadisticas() {
             document.getElementById('statsModal').classList.add('active');
-            const features = currentFeaturesFiltradas.length > 0 ? currentFeaturesFiltradas : allFeatures;
+            const features = currentFeaturesFiltradas;
             const variable = currentVariable;
             document.getElementById('statsTitle').textContent = `📊 Estadísticas: ${variableLabels[variable] || variable}`;
 
@@ -982,7 +998,7 @@
                 const valores = features.map(f => parseFloat(f.properties[variable])).filter(v => !isNaN(v) && v !== null);
                 if (valores.length > 0) {
                     const min = Math.min(...valores), max = Math.max(...valores);
-                    const steps = 5, step = (max - min) / steps;
+                    const steps = 5, step = (max - min) / steps || 1;
                     const counts = new Array(steps).fill(0);
                     valores.forEach(v => {
                         const idx = Math.min(Math.floor((v - min) / step), steps - 1);
@@ -1100,7 +1116,7 @@
                 map.addLayer(heatmapLayer);
                 heatmapLayer.setData(heatData);
 
-                currentLayer = L.geoJSON(geoJsonData, {
+                currentLayer = L.geoJSON({ type: 'FeatureCollection', features: featuresFiltradas }, {
                     style: { fillColor: 'transparent', fillOpacity: 0.01, color: 'rgba(255,255,255,0.3)', weight: 1 },
                     onEachFeature: function(feature, layer) { layer.bindPopup(crearPopup(feature.properties)); }
                 }).addTo(map);
@@ -1116,7 +1132,6 @@
                     <div class="legend-desc" style="margin-top:2px;border-top-color:#ccc;">🎛️ Opacidad: ${(opacity * 100).toFixed(0)}%</div>
                 `;
 
-                updateLegend(variable, featuresFiltradas);
                 document.getElementById('info-label').textContent = variableLabels[variable] || variable;
                 document.getElementById('info-value').textContent = `${featuresFiltradas.length} puntos en calor`;
                 return;
