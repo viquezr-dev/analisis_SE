@@ -429,9 +429,6 @@
             <input type="text" id="searchInput" placeholder="🔍 Buscar provincia, distrito, corregimiento, poblado o barrio..." />
             <button onclick="buscarPoligonos()">Buscar</button>
         </div>
-        <label for="geojson-file">📂 Cargar capa de barrios (GeoJSON):</label>
-        <input type="file" id="geojson-file" accept=".geojson,.json,application/geo+json,application/json" />
-        <div id="data-status" role="status" style="font-size:11px;line-height:1.4;margin:4px 0;color:#46515c;"></div>
 
         <!-- Botones de acción -->
         <div class="action-buttons">
@@ -511,7 +508,6 @@
         let currentMode = 'polygon';
         let heatmapLayer = null;
         let heatmapConfig = null;
-        let capaManualSeleccionada = false;
         
         // ================================================================
         // 3. INICIALIZAR HEATMAP (SEGUNDO PLANO)
@@ -1391,7 +1387,7 @@
         // ================================================================
         // 13. CARGA DEL GEOJSON Y EVENTOS
         // ================================================================
-        function establecerDatos(data, origen) {
+        function establecerDatos(data) {
             if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features)) {
                 throw new Error('El archivo debe ser un GeoJSON de tipo FeatureCollection.');
             }
@@ -1400,11 +1396,7 @@
             const campos = ['PROV_NOMB', 'DIST_NOMB', 'CORR_NOMB', 'LUPO_NOMB', 'BARR_NOMB'];
             const ausentes = campos.filter(campo =>
                 !features.some(f => campoNombre(f.properties, campo)));
-            const estado = document.getElementById('data-status');
-            estado.textContent = ausentes.length
-                ? `Capa: ${origen}. Faltan valores en: ${ausentes.join(', ')}. Exporta a GeoJSON la capa que contiene estos campos o selecciónala aquí.`
-                : `Capa: ${origen}. Campos de provincia, distrito, corregimiento, poblado y barrio detectados.`;
-            estado.style.color = ausentes.length ? '#a33b21' : '#27623b';
+            if (ausentes.length) console.warn('Campos de nombres sin valores en la capa del servidor:', ausentes.join(', '));
             geoJsonData = { type: 'FeatureCollection', features };
             allFeatures = features;
             filtrosActivos = {};
@@ -1424,28 +1416,12 @@
                 const response = await fetch('vivienda_2023.geojson');
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 const data = await response.json();
-                if (!capaManualSeleccionada) establecerDatos(data, 'vivienda_2023.geojson');
+                establecerDatos(data);
             } catch (error) {
-                if (capaManualSeleccionada) return;
-                const estado = document.getElementById('data-status');
-                estado.textContent = `No se cargó vivienda_2023.geojson (${error.message}). Selecciona tu capa de barrios en el botón de arriba.`;
-                estado.style.color = '#a33b21';
+                document.getElementById('info-value').textContent = `Error al cargar vivienda_2023.geojson: ${error.message}`;
+                console.error('Error al cargar la capa del servidor:', error);
             }
         }
-
-        document.getElementById('geojson-file').addEventListener('change', async function() {
-            const archivo = this.files?.[0];
-            if (!archivo) return;
-            try {
-                const data = JSON.parse(await archivo.text());
-                establecerDatos(data, archivo.name);
-                capaManualSeleccionada = true;
-            } catch (error) {
-                const estado = document.getElementById('data-status');
-                estado.textContent = `No se pudo cargar ${archivo.name}: ${error.message}`;
-                estado.style.color = '#a33b21';
-            }
-        });
 
         document.getElementById('variable-select').addEventListener('change', function(e) {
             currentVariable = e.target.value;
