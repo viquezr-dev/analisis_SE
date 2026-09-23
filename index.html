@@ -429,6 +429,9 @@
             <input type="text" id="searchInput" placeholder="🔍 Buscar provincia, distrito, corregimiento, poblado o barrio..." />
             <button onclick="buscarPoligonos()">Buscar</button>
         </div>
+        <label for="geojson-file">📂 Cargar capa de barrios (GeoJSON):</label>
+        <input type="file" id="geojson-file" accept=".geojson,.json,application/geo+json,application/json" />
+        <div id="data-status" role="status" style="font-size:11px;line-height:1.4;margin:4px 0;color:#46515c;"></div>
 
         <!-- Botones de acción -->
         <div class="action-buttons">
@@ -508,6 +511,7 @@
         let currentMode = 'polygon';
         let heatmapLayer = null;
         let heatmapConfig = null;
+        let capaManualSeleccionada = false;
         
         // ================================================================
         // 3. INICIALIZAR HEATMAP (SEGUNDO PLANO)
@@ -853,7 +857,7 @@
 
             const encontrados = allFeatures.filter(f => {
                 return ['PROV_NOMB', 'DIST_NOMB', 'CORR_NOMB', 'LUPO_NOMB', 'BARR_NOMB']
-                    .some(campo => String(f.properties[campo] || '').toLowerCase().includes(texto));
+                    .some(campo => campoNombre(f.properties, campo).toLowerCase().includes(texto));
             });
 
             if (encontrados.length === 0) {
@@ -898,6 +902,12 @@
         // ================================================================
         // 8. POPUP
         // ================================================================
+        function campoNombre(propiedades, campo) {
+            if (!propiedades) return '';
+            const clave = Object.keys(propiedades).find(k => k.trim().toUpperCase() === campo);
+            return clave && propiedades[clave] != null ? String(propiedades[clave]).trim() : '';
+        }
+
         function escaparHTML(valor) {
             return String(valor ?? '').replace(/[&<>"']/g, caracter => ({
                 '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -912,11 +922,11 @@
         function crearPopup(p) {
             const areaM2 = Number(p.AREA) || 0;
             const areaKm2 = areaM2 / 1000000;
-            const provincia = escaparHTML(p.PROV_NOMB || 'N/D');
-            const distrito = escaparHTML(p.DIST_NOMB || 'N/D');
-            const corregimiento = escaparHTML(p.CORR_NOMB || 'N/D');
-            const poblado = escaparHTML(p.LUPO_NOMB || 'N/D');
-            const barrio = escaparHTML(p.BARR_NOMB || 'N/D');
+            const provincia = escaparHTML(campoNombre(p, 'PROV_NOMB') || 'N/D');
+            const distrito = escaparHTML(campoNombre(p, 'DIST_NOMB') || 'N/D');
+            const corregimiento = escaparHTML(campoNombre(p, 'CORR_NOMB') || 'N/D');
+            const poblado = escaparHTML(campoNombre(p, 'LUPO_NOMB') || 'N/D');
+            const barrio = escaparHTML(campoNombre(p, 'BARR_NOMB') || 'N/D');
             return `<div style="font-family:'Segoe UI',sans-serif;min-width:170px;max-width:240px;font-size:11px;">
                 <h4 style="margin:0 0 2px 0;color:#1a2a3a;font-size:12px;">${provincia} – ${distrito} – ${corregimiento}</h4>
                 <div style="font-size:10px;color:#666;margin-bottom:2px;">📍 Poblado: ${poblado}<br>Barrio: ${barrio}</div>
@@ -951,7 +961,8 @@
             const rows = features.map(f => {
                 const p = f.properties;
                 return [
-                    p.PROV_NOMB || '', p.DIST_NOMB || '', p.CORR_NOMB || '', p.LUPO_NOMB || '', p.BARR_NOMB || '',
+                    ...['PROV_NOMB', 'DIST_NOMB', 'CORR_NOMB', 'LUPO_NOMB', 'BARR_NOMB']
+                        .map(campo => campoNombre(p, campo)),
                     p.VIVIENDA || 0, p.V_PERSONAS || 0, p.VIV_OCUP || 0,
                     numeroSeguro(p.PORC_OCU, 1),
                     numeroSeguro(p.DENS_POB, 1),
@@ -1380,33 +1391,61 @@
         // ================================================================
         // 13. CARGA DEL GEOJSON Y EVENTOS
         // ================================================================
+        function establecerDatos(data, origen) {
+            if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features)) {
+                throw new Error('El archivo debe ser un GeoJSON de tipo FeatureCollection.');
+            }
+            const features = data.features.filter(f => f && f.type === 'Feature' && f.geometry);
+            if (!features.length) throw new Error('El GeoJSON no contiene polígonos con geometría.');
+            const campos = ['PROV_NOMB', 'DIST_NOMB', 'CORR_NOMB', 'LUPO_NOMB', 'BARR_NOMB'];
+            const ausentes = campos.filter(campo =>
+                !features.some(f => campoNombre(f.properties, campo)));
+            const estado = document.getElementById('data-status');
+            estado.textContent = ausentes.length
+                ? `Capa: ${origen}. Faltan valores en: ${ausentes.join(', ')}. Exporta a GeoJSON la capa que contiene estos campos o selecciónala aquí.`
+                : `Capa: ${origen}. Campos de provincia, distrito, corregimiento, poblado y barrio detectados.`;
+            estado.style.color = ausentes.length ? '#a33b21' : '#27623b';
+            geoJsonData = { type: 'FeatureCollection', features };
+            allFeatures = features;
+            filtrosActivos = {};
+            const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
+            for (const cat of categories) filtrosActivos[cat] = true;
+            for (let i = 0; i < 6; i++) filtrosActivos[`rango_${i}`] = true;
+            currentVariable = document.getElementById('variable-select').value;
+            document.getElementById('searchInput').value = '';
+            construirFiltros(currentVariable);
+            updateMap();
+            const bounds = L.geoJSON(geoJsonData).getBounds();
+            if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
+        }
+
         async function loadGeoJSON() {
             try {
                 const response = await fetch('vivienda_2023.geojson');
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 const data = await response.json();
-                geoJsonData = data;
-                allFeatures = data.features;
-
-                const categories = ['MUY_BAJA', 'BAJA', 'MEDIA_BAJA', 'MEDIA', 'ALTA', 'MUY_ALTA', 'SIN_DATOS'];
-                for (const cat of categories) filtrosActivos[cat] = true;
-                for (let i = 0; i < 6; i++) filtrosActivos[`rango_${i}`] = true;
-
-                const variable = document.getElementById('variable-select').value;
-                currentVariable = variable;
-                construirFiltros(variable);
-                updateMap();
-
-                const bounds = L.geoJSON(data).getBounds();
-                if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
+                if (!capaManualSeleccionada) establecerDatos(data, 'vivienda_2023.geojson');
             } catch (error) {
-                document.getElementById('info-box').innerHTML = `
-                    <div style="color:#b94a4a;font-weight:bold;">⚠️ Error al cargar los datos</div>
-                    <div style="font-size:10px;margin-top:2px;">${error.message}</div>
-                    <div style="font-size:10px;margin-top:2px;">Recuerda que debes abrir el HTML desde un servidor local (ej. Live Server en VS Code).</div>
-                `;
+                if (capaManualSeleccionada) return;
+                const estado = document.getElementById('data-status');
+                estado.textContent = `No se cargó vivienda_2023.geojson (${error.message}). Selecciona tu capa de barrios en el botón de arriba.`;
+                estado.style.color = '#a33b21';
             }
         }
+
+        document.getElementById('geojson-file').addEventListener('change', async function() {
+            const archivo = this.files?.[0];
+            if (!archivo) return;
+            try {
+                const data = JSON.parse(await archivo.text());
+                establecerDatos(data, archivo.name);
+                capaManualSeleccionada = true;
+            } catch (error) {
+                const estado = document.getElementById('data-status');
+                estado.textContent = `No se pudo cargar ${archivo.name}: ${error.message}`;
+                estado.style.color = '#a33b21';
+            }
+        });
 
         document.getElementById('variable-select').addEventListener('change', function(e) {
             currentVariable = e.target.value;
